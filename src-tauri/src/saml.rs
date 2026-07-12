@@ -114,6 +114,10 @@ pub async fn authenticate(app: &AppHandle, saml_request: &str) -> Result<SamlRes
       .title("Sign in")
       // Roomier than the first cut (+30% width, +10% height) so IdP pages fit.
       .inner_size(676.0, 704.0)
+      // Start hidden: when the IdP session is still valid the flow auto-completes
+      // in well under a second, so the window is closed before it ever shows —
+      // a silent reconnect. It's only revealed (below) if auth stalls.
+      .visible(false)
       .focused(true)
       .on_navigation(move |nav| {
         if nav.scheme() == "globalprotectcallback" {
@@ -130,10 +134,26 @@ pub async fn authenticate(app: &AppHandle, saml_request: &str) -> Result<SamlRes
   })?;
   built_rx.await??;
 
+  // If the flow doesn't auto-complete quickly (needs interaction), reveal the
+  // window so the user can sign in. A valid session finishes first and this
+  // never fires → no flash. Marshal the show onto the GTK main thread.
+  let mut rx = rx;
+  let result = match tokio::time::timeout(std::time::Duration::from_millis(1500), &mut rx).await {
+    Ok(res) => res.ok().flatten(),
+    Err(_) => {
+      let app_show = app.clone();
+      let _ = app.run_on_main_thread(move || {
+        if let Some(w) = app_show.get_webview_window("saml") {
+          let _ = w.show();
+          let _ = w.set_focus();
+        }
+      });
+      rx.await.ok().flatten()
+    }
+  };
+
   // Closing the window before completion counts as a cancel.
-  let app3 = app.clone();
-  let result = rx.await.ok().flatten();
-  if let Some(w) = app3.get_webview_window("saml") {
+  if let Some(w) = app.get_webview_window("saml") {
     let _ = w.close();
   }
 
