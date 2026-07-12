@@ -112,7 +112,8 @@ pub async fn authenticate(app: &AppHandle, saml_request: &str) -> Result<SamlRes
   app.run_on_main_thread(move || {
     let result = WebviewWindowBuilder::new(&app2, "saml", url)
       .title("Sign in")
-      .inner_size(520.0, 640.0)
+      // Roomier than the first cut (+30% width, +10% height) so IdP pages fit.
+      .inner_size(676.0, 704.0)
       .focused(true)
       .on_navigation(move |nav| {
         if nav.scheme() == "globalprotectcallback" {
