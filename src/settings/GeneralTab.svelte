@@ -37,7 +37,7 @@
       <button class="switch" class:on={model.startMinimized} type="button" data-key="startMinimized" aria-label={m.settings_start_minimized()} onclick={() => toggleKey('startMinimized')}><span class="knob"></span></button>
     </div>
     <div class="toggle-item">
-      <div><div class="t" style="font-size:13px;color:var(--text-soft);font-weight:500;display:flex;align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>{m.language_label()}</div><div class="d" style="font-size:11.5px;color:var(--faint);margin-top:2px;">{m.language_system()} · English · Nederlands · Frysk</div></div>
+      <div><div class="t" style="font-size:13px;color:var(--text-soft);font-weight:500;display:flex;align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>{m.language_label()}</div><div class="d" style="font-size:11.5px;color:var(--faint);margin-top:2px;">{m.language_sub()}</div></div>
       <div style="min-width:180px;"><Dropdown options={localeOptions()} value={currentChoice()} onChange={(v) => applyChoice(v as LocaleChoice)} /></div>
     </div>
     <div class="toggle-item">

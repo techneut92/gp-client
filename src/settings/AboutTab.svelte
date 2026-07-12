@@ -58,8 +58,17 @@
     if (isUpd) return { icon, comp, ver: cur, spin: true, label: m.settings_updating(), pill: 'run' };
     if (cell.kind === 'avail') return { icon, comp, ver: `v${cell.current} → v${cell.latest}`, spin: false, label: m.settings_update_ready(), pill: 'avail' };
     if (cell.kind === 'current') return { icon, comp, ver: cur, spin: false, label: m.settings_up_to_date(), pill: 'ok' };
-    return { icon, comp, ver: '—', spin: false, label: '—', pill: 'muted' };
+    if (cell.kind === 'init') return { icon, comp, ver: cur, spin: true, label: m.settings_checking(), pill: 'run' };
+    return { icon, comp, ver: cur, spin: false, label: '—', pill: 'muted' };
   }
+  // Hero subtitle suffix: "· update available" when either is behind, else "· up to date".
+  const heroSuffix = $derived(
+    guiUpd.kind === 'avail' || beUpd.kind === 'avail'
+      ? ' · ' + m.settings_update_ready()
+      : guiUpd.kind === 'current' && (beUpd.kind === 'current' || beUpd.kind === 'dash')
+        ? ' · ' + m.settings_up_to_date()
+        : '',
+  );
   const updRows = $derived<UpdRow[]>([
     buildRow(APP_ICON, m.settings_app_section(), guiUpd, aboutGuiVer, updating && updGui),
     buildRow(BE_ICON, m.settings_backend_section(), beUpd, backendText, updating && updBackend),
@@ -232,7 +241,7 @@
 </script>
 
 <div class="settings-sec" id="sec-about" {hidden}>
-  <h2>{m.settings_nav_about()}</h2>
+  <h2>{m.settings_about_title()}</h2>
   <p class="desc">{m.settings_about_desc()}</p>
 
   <div class="about-app">
@@ -241,7 +250,7 @@
     </div>
     <div>
       <div class="about-name">GP <span style="color:var(--accent-soft)">Client</span></div>
-      <div class="about-ver" id="aboutVer">{aboutVer}</div>
+      <div class="about-ver" id="aboutVer">{aboutVer}{heroSuffix}</div>
     </div>
   </div>
 
@@ -249,18 +258,20 @@
     <div class="upd-rows">
       {#each updRows as r}
         <div class="upd-row">
-          <span class="upd-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{r.icon}"/></svg></span>
+          <span class="upd-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{r.icon}"/></svg></span>
           <span class="upd-meta"><span class="upd-comp">{r.comp}</span><span class="upd-ver">{r.ver}</span></span>
           <span class="upd-stat">{#if r.spin}<span class="upd-spin"></span>{/if}<span class="upd-pill {r.pill}">{r.label}</span></span>
         </div>
       {/each}
     </div>
-    <div class="update-actions">
-      <button class="btn-soft" id="checkUpdateBtn" onclick={onCheckUpdate}>{m.settings_check_updates()}</button>
-      <button class="btn-action auto" id="updateAllBtn" hidden={!updateAllVisible} disabled={updating} style="padding:0 16px;" onclick={onUpdateAll}>{updating ? m.settings_updating() : m.settings_update_all()}</button>
-      <button class="btn-action auto" id="restartBtn" hidden={!restartVisible} style="padding:0 16px;" onclick={onRestart}>{restartText}</button>
+    <div class="update-foot">
+      <div class={ubKind ? `bk-status ${ubKind}` : 'bk-status'} id="updateBackendLog" hidden={!ubLog}>{ubLog}</div>
+      <div class="update-actions">
+        <button class="btn-action auto" id="updateAllBtn" hidden={!updateAllVisible} disabled={updating} onclick={onUpdateAll}>{updating ? m.settings_updating() : m.settings_update_all()}</button>
+        <button class="btn-action auto" id="restartBtn" hidden={!restartVisible} onclick={onRestart}>{restartText}</button>
+        <button class="btn-soft" id="checkUpdateBtn" onclick={onCheckUpdate}>{m.settings_check_again()}</button>
+      </div>
     </div>
-    <div class={ubKind ? `bk-status ${ubKind}` : 'bk-status'} id="updateBackendLog" hidden={!ubLog} style="margin-top:8px;">{ubLog}</div>
   </div>
 
   <div class="lbl" style="margin-top:18px;">{m.settings_app_section()}</div>
@@ -268,17 +279,17 @@
     <div class="drow"><div class="k">{m.settings_lbl_version()}</div><div class="v" id="aboutGuiVer">{aboutGuiVer}</div></div>
     <div class="drow"><div class="k">{m.settings_running_as()}</div><div class="v" id="aboutRunning">{aboutRunning}</div></div>
     <div class="drow" id="aboutRuntimeRow" hidden={!runtimeVisible}><div class="k">{m.settings_flatpak_runtime()}</div><div class="v" id="aboutRuntime">{aboutRuntime}</div></div>
-    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutGuiUpd">{#if guiUpd.kind === 'init'}—{:else if guiUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if guiUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:var(--green)">v{guiUpd.current} → v{guiUpd.latest}</span>{/if}</div></div>
+    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutGuiUpd">{#if guiUpd.kind === 'init'}—{:else if guiUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if guiUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:#6ee7b7; font-weight:600">{m.settings_update_ready()} — v{guiUpd.latest}</span>{/if}</div></div>
   </div>
 
-  <div class="lbl" style="margin-top:18px;">{m.settings_backend_section()}</div>
+  <div class="lbl" style="margin-top:16px;">{m.settings_backend_section()}</div>
   <div class="detail-card">
     <div class="drow"><div class="k">{m.settings_lbl_version()}</div><div class="v" id="aboutBackend">{#if backendState === 'unknown'}—{:else if backendState === 'missing'}<span style="color:var(--red)">{m.settings_not_installed()}</span>{:else}{backendText}{/if}</div></div>
     <div class="drow"><div class="k">{m.settings_install_type()}</div><div class="v" id="aboutKind">{aboutKind}</div></div>
-    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutBeUpd">{#if beUpd.kind === 'init'}—{:else if beUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if beUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:var(--green)">v{beUpd.current} → v{beUpd.latest}</span>{/if}</div></div>
+    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutBeUpd">{#if beUpd.kind === 'init'}—{:else if beUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if beUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:#6ee7b7; font-weight:600">{m.settings_update_ready()} — v{beUpd.latest}</span>{/if}</div></div>
   </div>
 
-  <div class="lbl" style="margin-top:18px;">{m.settings_system_section()}</div>
+  <div class="lbl" style="margin-top:16px;">{m.settings_system_section()}</div>
   <div class="detail-card">
     <div class="drow"><div class="k">{m.settings_lbl_os()}</div><div class="v" id="aboutOs">{aboutOs}</div></div>
   </div>
