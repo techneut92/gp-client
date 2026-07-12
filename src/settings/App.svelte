@@ -14,6 +14,13 @@
 
   const hasTauri = '__TAURI_INTERNALS__' in window;
 
+  // Mount shim: the original page put class="settings" on <body> with the
+  // layout as direct body children; we mount inside #app, so restore the
+  // body class and make #app transparent to the flex chain — without this
+  // .settings-content never gets a height constraint and cannot scroll.
+  document.body.classList.add('settings');
+  document.getElementById('app')?.style.setProperty('display', 'contents');
+
   const REPO_URL = 'https://github.com/techneut92/GlobalProtect-openconnect-dw';
   const UPSTREAM_URL = 'https://github.com/yuezk/GlobalProtect-openconnect';
   const KOFI_URL = 'https://ko-fi.com/techneut92?amount=2.50#checkoutModal';
