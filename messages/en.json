@@ -255,5 +255,7 @@
   "manager_hint_saml": "SAML / SSO.",
   "manager_hint_saml_browser": "SAML / SSO — system browser supported.",
   "manager_log_need_name": "Give it a name or portal.",
-  "manager_log_saved": "Saved ✓"
+  "manager_log_saved": "Saved ✓",
+  "language_label": "Language",
+  "language_system": "System default"
 }

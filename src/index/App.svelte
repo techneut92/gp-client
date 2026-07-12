@@ -7,6 +7,7 @@
   import { listen } from '@tauri-apps/api/event';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { m } from '../paraglide/messages.js';
+  import { applyChoice, currentChoice, localeOptions, type LocaleChoice } from '../lib/locale';
   import Dropdown from '../lib/Dropdown.svelte';
 
   // The original page laid header/main/footer directly under the flex-column
@@ -730,6 +731,10 @@
       <div class="optin-note" id="autoInfoNote" hidden={infoNoteHidden || !keyringAvailable}>{m.main_auto_unlock_note()}</div>
 
       <div class="actions" style="width:100%"><button class="btn-action" id="setupBtn" onclick={() => void doSetup()}>{m.main_create_vault()}</button></div>
+      <div style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;">
+        <span style="font-size:12px;color:var(--faint);">{m.language_label()}</span>
+        <div style="min-width:170px;"><Dropdown options={localeOptions()} value={currentChoice()} onChange={(v) => applyChoice(v as LocaleChoice)} /></div>
+      </div>
     </div>
   </div>
 
@@ -754,6 +759,10 @@
       <p class="formlog" id="lockLog" class:err={lockLog.err}>{lockLog.msg}</p>
       <div class="actions" style="width:100%"><button class="btn-action" id="unlockBtn" onclick={() => void doUnlock()}>{m.main_unlock()}</button></div>
       <button class="link" id="forgotPinBtn" style="margin-top:8px;" hidden={resetOpen} onclick={() => (resetOpen = true)}>{m.main_forgot_pin()}</button>
+      <div style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;">
+        <span style="font-size:12px;color:var(--faint);">{m.language_label()}</span>
+        <div style="min-width:170px;"><Dropdown options={localeOptions()} value={currentChoice()} onChange={(v) => applyChoice(v as LocaleChoice)} /></div>
+      </div>
       <div class="reset-warn" id="resetWarn" hidden={!resetOpen}>
         <div class="warn-text">
           <strong>{m.main_reset_title()}</strong> {m.main_reset_body()}

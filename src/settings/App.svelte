@@ -7,6 +7,7 @@
   import { listen, type UnlistenFn } from '@tauri-apps/api/event';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { m } from '../paraglide/messages.js';
+  import { applyChoice, currentChoice, localeOptions, type LocaleChoice } from '../lib/locale';
   import Dropdown from '../lib/Dropdown.svelte';
   import revolutQrUrl from '../revolut-qr.png';
   import ethQrUrl from '../eth-qr.png';
@@ -487,6 +488,10 @@
         <div class="toggle-item">
           <div><div class="t">{m.settings_start_minimized()}</div><div class="d">{m.settings_start_minimized_desc()}</div></div>
           <button class="switch" class:on={model.startMinimized} type="button" data-key="startMinimized" aria-label={m.settings_start_minimized()} onclick={() => toggleKey('startMinimized')}><span class="knob"></span></button>
+        </div>
+        <div class="toggle-item">
+          <div><div class="t" style="font-size:13px;color:var(--text-soft);font-weight:500;">{m.language_label()}</div><div class="d" style="font-size:11.5px;color:var(--faint);margin-top:2px;">{m.language_system()} · English · Nederlands · Frysk</div></div>
+          <div style="min-width:180px;"><Dropdown options={localeOptions()} value={currentChoice()} onChange={(v) => applyChoice(v as LocaleChoice)} /></div>
         </div>
         <div class="toggle-item">
           <div><div class="t">{m.settings_remember_unlock()}</div><div class="d">{m.settings_remember_unlock_desc()}</div></div>

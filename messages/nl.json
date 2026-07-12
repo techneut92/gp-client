@@ -255,5 +255,7 @@
   "manager_hint_saml": "SAML / SSO.",
   "manager_hint_saml_browser": "SAML / SSO — systeembrowser ondersteund.",
   "manager_log_need_name": "Geef een naam of portaal op.",
-  "manager_log_saved": "Opgeslagen ✓"
+  "manager_log_saved": "Opgeslagen ✓",
+  "language_label": "Taal",
+  "language_system": "Systeemstandaard"
 }
