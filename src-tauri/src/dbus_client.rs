@@ -15,6 +15,10 @@ trait GpService {
   async fn connect(&self, request: String) -> zbus::Result<()>;
   async fn disconnect(&self) -> zbus::Result<()>;
   async fn status(&self) -> zbus::Result<String>;
+  /// v3 handoff: run prelogin, return a JSON `ProbeReply`.
+  async fn probe(&self, request: String) -> zbus::Result<String>;
+  /// v3 handoff: authenticate with a captured credential and start the tunnel.
+  async fn connect_auth(&self, request: String) -> zbus::Result<()>;
 
   #[zbus(signal)]
   fn vpn_state_changed(&self, state: String) -> zbus::Result<()>;
@@ -36,6 +40,17 @@ impl DbusHandle {
 
   pub async fn send_disconnect(&self) -> Result<()> {
     self.proxy().await?.disconnect().await?;
+    Ok(())
+  }
+
+  /// v3 handoff: probe a gateway and return the raw `ProbeReply` JSON.
+  pub async fn probe(&self, request: String) -> Result<String> {
+    Ok(self.proxy().await?.probe(request).await?)
+  }
+
+  /// v3 handoff: authenticate with a captured credential and start the tunnel.
+  pub async fn send_connect_auth(&self, request: String) -> Result<()> {
+    self.proxy().await?.connect_auth(request).await?;
     Ok(())
   }
 }

@@ -17,7 +17,7 @@ use tokio::sync::mpsc;
 
 use crate::client::{self, Handle};
 use crate::dbus_client::{self, DbusHandle};
-use gp_protocol::{ConnectRequest, DisconnectRequest, VpnState, WsEvent, WsRequest};
+use gp_protocol::{ConnectAuthRequest, ConnectRequest, DisconnectRequest, ProbeReply, ProbeRequest, VpnState, WsEvent, WsRequest};
 
 pub enum Transport {
   Loopback(Handle),
@@ -36,6 +36,28 @@ impl Transport {
     match self {
       Transport::Loopback(h) => h.send(WsRequest::Disconnect(DisconnectRequest)).await,
       Transport::Dbus(h) => h.send_disconnect().await,
+    }
+  }
+
+  /// v3 handoff: probe a gateway and get the required auth back.
+  pub async fn probe(&self, request: ProbeRequest) -> Result<ProbeReply> {
+    match self {
+      Transport::Dbus(h) => {
+        let reply = h.probe(serde_json::to_string(&request)?).await?;
+        Ok(serde_json::from_str(&reply)?)
+      }
+      // WS Probe->ProbeResult routing isn't wired yet; use GP_TRANSPORT=dbus.
+      Transport::Loopback(_) => {
+        anyhow::bail!("probe is only available over the D-Bus transport for now (set GP_TRANSPORT=dbus)")
+      }
+    }
+  }
+
+  /// v3 handoff: authenticate with a captured credential and start the tunnel.
+  pub async fn send_connect_auth(&self, request: ConnectAuthRequest) -> Result<()> {
+    match self {
+      Transport::Dbus(h) => h.send_connect_auth(serde_json::to_string(&request)?).await,
+      Transport::Loopback(h) => h.send(WsRequest::ConnectAuth(Box::new(request))).await,
     }
   }
 }

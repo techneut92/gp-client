@@ -11,7 +11,10 @@
 
 use anyhow::{bail, Result};
 use gp_protocol::request::ConnectRequest;
+use gp_protocol::{ClientOs, ProbeReply, ProbeRequest};
 use tauri::AppHandle;
+
+use crate::dbus_client;
 
 /// Inputs captured from the UI for a connection attempt.
 pub struct AuthParams {
@@ -70,21 +73,88 @@ pub struct ProbeResult {
 /// O2: becomes a gp-protocol `Probe` request answered by gpservice (which owns
 /// the portal HTTP + the pkcs11 mTLS signing).
 pub async fn probe(
-  _server: &str,
-  _os: &str,
-  _user_agent: &str,
-  _certificate: Option<String>,
-  _sslkey: Option<String>,
-  _key_password: Option<String>,
-  _ignore_tls_errors: bool,
+  server: &str,
+  os: &str,
+  user_agent: &str,
+  certificate: Option<String>,
+  sslkey: Option<String>,
+  key_password: Option<String>,
+  ignore_tls_errors: bool,
 ) -> ProbeResult {
-  ProbeResult {
-    kind: "error".into(),
-    supports_browser: false,
-    username_label: String::new(),
-    password_label: String::new(),
-    message: "gp-client: portal probe pending the gp-protocol handoff (O2)".into(),
+  match probe_impl(server, os, user_agent, certificate, sslkey, key_password, ignore_tls_errors).await {
+    Ok(reply) => match reply {
+      ProbeReply::Saml { supports_browser, .. } => ProbeResult {
+        kind: "saml".into(),
+        supports_browser,
+        username_label: String::new(),
+        password_label: String::new(),
+        message: String::new(),
+      },
+      ProbeReply::Standard {
+        username_label,
+        password_label,
+      } => ProbeResult {
+        kind: "standard".into(),
+        supports_browser: false,
+        username_label,
+        password_label,
+        message: String::new(),
+      },
+      ProbeReply::Error { message, cert_needed } => ProbeResult {
+        kind: if cert_needed { "cert" } else { "error" }.into(),
+        supports_browser: false,
+        username_label: String::new(),
+        password_label: String::new(),
+        message,
+      },
+    },
+    Err(e) => ProbeResult {
+      kind: "error".into(),
+      supports_browser: false,
+      username_label: String::new(),
+      password_label: String::new(),
+      message: format!("{e:#}"),
+    },
   }
+}
+
+/// A reasonable OS-version string per client OS. gp-client links no gpapi, so
+/// this stands in for its `host_utils` (the exact value rarely affects
+/// prelogin; the portal keys off `os`).
+fn os_version(os: &ClientOs) -> String {
+  match os {
+    ClientOs::Linux => "Linux".to_string(),
+    ClientOs::Windows => "Microsoft Windows 11 Pro, 64-bit".to_string(),
+    ClientOs::Mac => "Apple Mac OS X 14.0.0".to_string(),
+  }
+}
+
+/// The real probe: hands a `ProbeRequest` to the backend over D-Bus (the
+/// backend runs prelogin, incl. the PKCS#11 mTLS). WS transport support is
+/// pending; this requires the D-Bus transport (`GP_TRANSPORT=dbus`) and a
+/// backend ≥ 1.3.1.
+async fn probe_impl(
+  server: &str,
+  os: &str,
+  user_agent: &str,
+  certificate: Option<String>,
+  sslkey: Option<String>,
+  key_password: Option<String>,
+  ignore_tls_errors: bool,
+) -> Result<ProbeReply> {
+  let req = ProbeRequest {
+    server: server.to_string(),
+    certificate,
+    sslkey,
+    key_password,
+    ignore_tls_errors,
+    os: Some(ClientOs::from(os)),
+    os_version: Some(os_version(&ClientOs::from(os))),
+    user_agent: Some(user_agent.to_string()),
+  };
+  let (handle, _rx) = dbus_client::open().await?;
+  let reply = handle.probe(serde_json::to_string(&req)?).await?;
+  Ok(serde_json::from_str(&reply)?)
 }
 
 /// Authenticate and build the `ConnectRequest` for gpservice.
