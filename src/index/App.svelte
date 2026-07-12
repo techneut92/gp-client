@@ -140,7 +140,7 @@
       // there rather than running a frontend-only update here.
       const what = u.available && u.backendUpdate ? m.main_update_app_backend() : u.available ? m.main_update_app() : m.main_update_backend();
       banner = {
-        text: m.main_update_available({ what, version: u.latest ?? '' }),
+        text: what,
         kind: 'info',
         onClick: () => {
           if (hasTauri) void api.openSettings('about');

@@ -19,7 +19,7 @@
     | { kind: 'init' }
     | { kind: 'dash' }
     | { kind: 'current' }
-    | { kind: 'avail'; latest: string };
+    | { kind: 'avail'; current: string; latest: string };
 
   let aboutVer = $state('—');
   let aboutGuiVer = $state('—');
@@ -84,13 +84,13 @@
       guiUpd = err
         ? { kind: 'dash' }
         : u && u.available
-          ? { kind: 'avail', latest: u.latest ?? '' }
+          ? { kind: 'avail', current: u.current ?? '', latest: u.latest ?? '' }
           : { kind: 'current' };
       beUpd =
         !s.backendInstalled || err
           ? { kind: 'dash' }
           : u && u.backendUpdate
-            ? { kind: 'avail', latest: u.latest ?? '' }
+            ? { kind: 'avail', current: u.backendCurrent ?? '', latest: u.backendLatest ?? '' }
             : { kind: 'current' };
       if (u) {
         updateUrl = u.url || updateUrl;
@@ -246,14 +246,14 @@
     <div class="drow"><div class="k">{m.settings_lbl_version()}</div><div class="v" id="aboutGuiVer">{aboutGuiVer}</div></div>
     <div class="drow"><div class="k">{m.settings_running_as()}</div><div class="v" id="aboutRunning">{aboutRunning}</div></div>
     <div class="drow" id="aboutRuntimeRow" hidden={!runtimeVisible}><div class="k">{m.settings_flatpak_runtime()}</div><div class="v" id="aboutRuntime">{aboutRuntime}</div></div>
-    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutGuiUpd">{#if guiUpd.kind === 'init'}—{:else if guiUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if guiUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:var(--green)">{m.settings_update_available({ version: guiUpd.latest })}</span>{/if}</div></div>
+    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutGuiUpd">{#if guiUpd.kind === 'init'}—{:else if guiUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if guiUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:var(--green)">v{guiUpd.current} → v{guiUpd.latest}</span>{/if}</div></div>
   </div>
 
   <div class="lbl" style="margin-top:18px;">{m.settings_backend_section()}</div>
   <div class="detail-card">
     <div class="drow"><div class="k">{m.settings_lbl_version()}</div><div class="v" id="aboutBackend">{#if backendState === 'unknown'}—{:else if backendState === 'missing'}<span style="color:var(--red)">{m.settings_not_installed()}</span>{:else}{backendText}{/if}</div></div>
     <div class="drow"><div class="k">{m.settings_install_type()}</div><div class="v" id="aboutKind">{aboutKind}</div></div>
-    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutBeUpd">{#if beUpd.kind === 'init'}—{:else if beUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if beUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:var(--green)">{m.settings_update_available({ version: beUpd.latest })}</span>{/if}</div></div>
+    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutBeUpd">{#if beUpd.kind === 'init'}—{:else if beUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if beUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:var(--green)">v{beUpd.current} → v{beUpd.latest}</span>{/if}</div></div>
   </div>
 
   <div class="lbl" style="margin-top:18px;">{m.settings_system_section()}</div>

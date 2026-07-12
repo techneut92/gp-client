@@ -294,6 +294,10 @@ async fn install_backend(kind: Option<String>, version: Option<String>) -> serde
 struct UpdateInfo {
   current: String,
   latest: String,
+  /// Installed backend version and the backend's latest release — the backend
+  /// versions independently of the GUI, so these are separate from current/latest.
+  backend_current: String,
+  backend_latest: String,
   /// The GUI itself is behind the latest release.
   available: bool,
   /// The installed backend is behind the latest release (separate from the GUI —
@@ -315,6 +319,8 @@ async fn check_update() -> UpdateInfo {
   // independently now, so check both releases separately.
   let gui = system::latest_gui_release().await;
   let backend_latest = system::latest_backend_release().await;
+  let backend_current = backend.clone().unwrap_or_default();
+  let backend_latest_ver = backend_latest.as_ref().map(|r| r.version.clone()).unwrap_or_default();
 
   let backend_update = match backend_latest.as_ref() {
     Ok(r) => {
@@ -337,6 +343,8 @@ async fn check_update() -> UpdateInfo {
         backend_update,
         current,
         latest: r.version,
+        backend_current,
+        backend_latest: backend_latest_ver,
         url: if r.url.is_empty() { gui_repo_url } else { r.url },
         error: backend_latest.err(),
       }
@@ -344,6 +352,8 @@ async fn check_update() -> UpdateInfo {
     Err(e) => UpdateInfo {
       current,
       latest: String::new(),
+      backend_current,
+      backend_latest: backend_latest_ver,
       available: false,
       backend_update,
       url: gui_repo_url,

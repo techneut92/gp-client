@@ -90,7 +90,7 @@ main { flex: 1 1 auto; display: flex; flex-direction: column; overflow-y: auto; 
 .hero { display: flex; flex-direction: column; align-items: center; padding: 26px 0 18px; }
 .orb-wrap { position: relative; width: 148px; height: 148px; display: flex; align-items: center; justify-content: center; --c: var(--grey); }
 .orb-glow {
-  position: absolute; width: 138px; height: 138px; border-radius: 50%;
+  position: absolute; inset: 0; margin: auto; width: 138px; height: 138px; border-radius: 50%;
   background: var(--c); opacity: .16; filter: blur(16px);
   box-shadow: 0 0 55px 6px var(--c);
 }
@@ -98,7 +98,7 @@ main { flex: 1 1 auto; display: flex; flex-direction: column; overflow-y: auto; 
 .orb-wrap.connected .orb-glow { opacity: .5; animation: breathe 2.8s ease-in-out infinite; }
 @keyframes breathe { 0%,100% { opacity: .3; } 50% { opacity: .6; } }
 .orb-ring {
-  position: absolute; width: 148px; height: 148px; border-radius: 50%;
+  position: absolute; inset: 0; margin: auto; width: 148px; height: 148px; border-radius: 50%;
   background: color-mix(in srgb, var(--c) 12%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent);
 }

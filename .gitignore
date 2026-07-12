@@ -3,3 +3,5 @@ dist/
 target/
 src-tauri/target/
 src/paraglide/
+*.zip
+src-tauri.zip

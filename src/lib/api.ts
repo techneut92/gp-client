@@ -73,6 +73,8 @@ export interface UpdateInfo {
   backendUpdate?: boolean;
   current?: string | null;
   latest?: string | null;
+  backendCurrent?: string | null;
+  backendLatest?: string | null;
   url?: string | null;
 }
 
