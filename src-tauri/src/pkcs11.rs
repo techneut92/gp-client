@@ -96,6 +96,8 @@ pub fn available_modules() -> Vec<String> {
     "/usr/lib64/pkcs11/libykcs11.so",
     "/usr/lib/x86_64-linux-gnu/libykcs11.so.2",
     "/usr/lib64/libykcs11.so",
+    // Fedora ships the YubiKey-native module under the versioned soname only.
+    "/usr/lib64/libykcs11.so.2",
     "/usr/lib64/softhsm/libsofthsm2.so",
     "/usr/lib/softhsm/libsofthsm2.so",
     "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so",
