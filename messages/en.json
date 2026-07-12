@@ -262,5 +262,6 @@
   "main_update_available_one": "Update available",
   "main_update_sub_app": "App v{version}",
   "main_update_sub_backend": "backend v{version}",
-  "main_update_btn": "Update"
+  "main_update_btn": "Update",
+  "settings_update_ready": "Update available"
 }

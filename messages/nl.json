@@ -262,5 +262,6 @@
   "main_update_available_one": "Update beschikbaar",
   "main_update_sub_app": "App v{version}",
   "main_update_sub_backend": "backend v{version}",
-  "main_update_btn": "Bijwerken"
+  "main_update_btn": "Bijwerken",
+  "settings_update_ready": "Update beschikbaar"
 }

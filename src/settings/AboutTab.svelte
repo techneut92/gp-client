@@ -50,6 +50,21 @@
     ubKind = kind;
   }
 
+  // Prominent per-component update rows (app + backend) in the update card.
+  const APP_ICON = 'M12 3l7 3v5c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6l7-3z';
+  const BE_ICON = 'M4 5h16v6H4zM4 13h16v6H4zM8 8h.01M8 16h.01';
+  type UpdRow = { icon: string; comp: string; ver: string; spin: boolean; label: string; pill: string };
+  function buildRow(icon: string, comp: string, cell: UpdCell, cur: string, isUpd: boolean): UpdRow {
+    if (isUpd) return { icon, comp, ver: cur, spin: true, label: m.settings_updating(), pill: 'run' };
+    if (cell.kind === 'avail') return { icon, comp, ver: `v${cell.current} → v${cell.latest}`, spin: false, label: m.settings_update_ready(), pill: 'avail' };
+    if (cell.kind === 'current') return { icon, comp, ver: cur, spin: false, label: m.settings_up_to_date(), pill: 'ok' };
+    return { icon, comp, ver: '—', spin: false, label: '—', pill: 'muted' };
+  }
+  const updRows = $derived<UpdRow[]>([
+    buildRow(APP_ICON, m.settings_app_section(), guiUpd, aboutGuiVer, updating && updGui),
+    buildRow(BE_ICON, m.settings_backend_section(), beUpd, backendText, updating && updBackend),
+  ]);
+
   export async function loadAbout(): Promise<void> {
     if (!hasTauri) {
       aboutVer = m.settings_dev_build();
@@ -231,7 +246,15 @@
   </div>
 
   <div class="update-box">
-    <div class="update-status" id="updateStatus">{updateStatus}</div>
+    <div class="upd-rows">
+      {#each updRows as r}
+        <div class="upd-row">
+          <span class="upd-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{r.icon}"/></svg></span>
+          <span class="upd-meta"><span class="upd-comp">{r.comp}</span><span class="upd-ver">{r.ver}</span></span>
+          <span class="upd-stat">{#if r.spin}<span class="upd-spin"></span>{/if}<span class="upd-pill {r.pill}">{r.label}</span></span>
+        </div>
+      {/each}
+    </div>
     <div class="update-actions">
       <button class="btn-soft" id="checkUpdateBtn" onclick={onCheckUpdate}>{m.settings_check_updates()}</button>
       <button class="btn-action auto" id="updateAllBtn" hidden={!updateAllVisible} disabled={updating} style="padding:0 16px;" onclick={onUpdateAll}>{updating ? m.settings_updating() : m.settings_update_all()}</button>
