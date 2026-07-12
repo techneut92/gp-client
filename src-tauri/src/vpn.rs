@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
 
-use crate::connect::{build_connect_request, AuthParams, ConnOpts};
+use crate::connect::{authenticate, AuthParams, ConnOpts};
 use crate::state::{ConnDetails, Shared, Status};
 use crate::transport::{self, Transport};
 use crate::tray::TrayHandle;
@@ -239,20 +239,23 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
     opts: p.opts.clone(),
   };
 
-  notifier.log("Authenticating (prelogin + SSO)…");
-  let request = build_connect_request(&auth, app_handle).await?;
-
   // Shared loopback secret (used only by the loopback transport).
   let key = crate::config::load_or_create_api_key();
 
   notifier.log("Connecting to gpservice…");
   let (transport, mut events) = transport::open(&key).await?;
 
+  // Authenticate via the backend handoff: probe (backend runs prelogin + mTLS),
+  // run our own SAML webview if needed, then hand the credential back. The
+  // backend does the gateway login and starts the tunnel.
+  notifier.log("Authenticating (prelogin + SSO)…");
+  let request = authenticate(&auth, app_handle, &transport).await?;
+
   transport
-    .send_connect(request)
+    .send_connect_auth(request)
     .await
-    .context("sending Connect to gpservice")?;
-  notifier.log("Connect request sent; bringing up tunnel…");
+    .context("sending ConnectAuth to gpservice")?;
+  notifier.log("Authenticated; bringing up tunnel…");
 
   // Stream VpnState back into the UI until the transport closes.
   let n = notifier.clone();

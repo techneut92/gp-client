@@ -12,6 +12,7 @@
 use anyhow::{bail, Result};
 use gp_protocol::request::ConnectRequest;
 use gp_protocol::{ClientOs, ProbeReply, ProbeRequest};
+use gp_protocol::{ConnectInfo, Gateway};
 use tauri::AppHandle;
 
 use crate::dbus_client;
@@ -157,11 +158,85 @@ async fn probe_impl(
   Ok(serde_json::from_str(&reply)?)
 }
 
-/// Authenticate and build the `ConnectRequest` for gpservice.
+/// Authenticate via the backend handoff and build the `ConnectAuthRequest`.
 ///
-/// O2: prelogin + gateway login run in gpservice over gp-protocol; the SAML
-/// webview (when needed) runs here in our own code and only the resulting
-/// prelogin-cookie crosses the wire.
-pub async fn build_connect_request(_p: &AuthParams, _app_handle: &AppHandle) -> Result<ConnectRequest> {
-  bail!("gp-client: connect pending the gp-protocol handoff (O2) — use the gpgui client to connect meanwhile");
+/// The backend runs prelogin (incl. the PKCS#11 mTLS) and reports the auth
+/// type; for SAML we run our own webview here and hand back the cookie; the
+/// backend then does the gateway login and starts the tunnel. gp-client links
+/// no portal/HTTP/GPL code — only `gp-protocol`.
+pub async fn authenticate(
+  p: &AuthParams,
+  app_handle: &AppHandle,
+  transport: &crate::transport::Transport,
+) -> Result<gp_protocol::ConnectAuthRequest> {
+  let os = ClientOs::from(p.os.as_str());
+  let cert = (!p.certificate.is_empty()).then(|| p.certificate.clone());
+
+  let probe = ProbeRequest {
+    server: p.server.clone(),
+    certificate: cert.clone(),
+    sslkey: p.sslkey.clone(),
+    key_password: p.key_password.clone(),
+    ignore_tls_errors: p.opts.ignore_tls_errors,
+    os: Some(os.clone()),
+    os_version: Some(os_version(&os)),
+    user_agent: Some(p.user_agent.clone()),
+  };
+
+  // 1. Ask the backend what the gateway wants (it does the mTLS prelogin).
+  let credential = match transport.probe(probe).await? {
+    ProbeReply::Saml { saml_request, .. } => {
+      // 2a. SAML: run our own webview, hand back the cookie.
+      let result = crate::saml::authenticate(app_handle, &saml_request).await?;
+      result.into_credential()
+    }
+    ProbeReply::Standard { .. } => {
+      // 2b. Standard: use the identity's username/password.
+      match (p.username.as_deref(), p.password.as_deref()) {
+        (Some(u), Some(pw)) if !u.is_empty() => gp_protocol::AuthCredential::Password {
+          username: u.to_string(),
+          password: pw.to_string(),
+        },
+        _ => bail!("This gateway needs a username and password — add them to the identity"),
+      }
+    }
+    ProbeReply::Error { message, .. } => bail!(message),
+  };
+
+  // Tunnel options: build a throwaway ConnectRequest to assemble a ConnectArgs
+  // (its builders are the only way to set the private fields), then reuse it.
+  let o = &p.opts;
+  let gateway = Gateway::new(p.server.clone(), p.server.clone());
+  let info = ConnectInfo::new(p.server.clone(), gateway.clone(), vec![gateway]);
+  let mut args_src = ConnectRequest::new(info, String::new())
+    .with_mtu(o.mtu)
+    .with_disable_ipv6(o.disable_ipv6)
+    .with_no_dtls(o.no_dtls)
+    .with_no_xmlpost(o.no_xmlpost)
+    .with_force_dpd(o.force_dpd);
+  if o.reconnect_timeout > 0 {
+    args_src = args_src.with_reconnect_timeout(o.reconnect_timeout);
+  }
+  if !o.vpnc_script.is_empty() {
+    args_src = args_src.with_vpnc_script(Some(o.vpnc_script.clone()));
+  }
+  if !o.local_hostname.is_empty() {
+    args_src = args_src.with_local_hostname(Some(o.local_hostname.clone()));
+  }
+  if !o.client_version.is_empty() {
+    args_src = args_src.with_client_version(&o.client_version);
+  }
+
+  Ok(gp_protocol::ConnectAuthRequest {
+    server: p.server.clone(),
+    credential,
+    certificate: cert,
+    sslkey: p.sslkey.clone(),
+    key_password: p.key_password.clone(),
+    ignore_tls_errors: o.ignore_tls_errors,
+    os: Some(os),
+    os_version: Some(os_version(&ClientOs::from(p.os.as_str()))),
+    user_agent: Some(p.user_agent.clone()),
+    args: args_src.args().clone(),
+  })
 }
