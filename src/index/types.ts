@@ -15,6 +15,8 @@ export interface LogLine {
 
 export interface Banner {
   text: string;
+  /** Second line — the component versions, e.g. "App v1.4.2 · backend v1.4.1". */
+  sub?: string;
   kind: string;
   onClick: () => void;
 }

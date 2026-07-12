@@ -197,7 +197,7 @@
   "settings_already_up_to_date": "Al by de tiid.",
   "settings_update_elapsed": "{phase} ({seconds}s)",
   "settings_saved": "Bewarre",
-  "settings_footer_copyright": "© 2026 Dylan Westra (techneut92). Fergees & iepen boarne ûnder GPL-3.0 — in fork fan",
+  "settings_footer_copyright": "© 2026 Dylan Westra (techneut92).",
   "settings_footer_project_page": "Projektside ↗",
   "manager_title": "Identiteiten",
   "manager_vault_locked": "Klûs beskoattele",
@@ -257,5 +257,10 @@
   "manager_log_need_name": "Jou in namme of portaal op.",
   "manager_log_saved": "Bewarre ✓",
   "language_label": "Taal",
-  "language_system": "Systeemstandert"
+  "language_system": "Systeemstandert",
+  "main_updates_available": "Fernijingen beskikber",
+  "main_update_available_one": "Fernijing beskikber",
+  "main_update_sub_app": "App v{version}",
+  "main_update_sub_backend": "backend v{version}",
+  "main_update_btn": "Fernije"
 }

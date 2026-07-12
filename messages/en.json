@@ -197,7 +197,7 @@
   "settings_already_up_to_date": "Already up to date.",
   "settings_update_elapsed": "{phase} ({seconds}s)",
   "settings_saved": "Saved",
-  "settings_footer_copyright": "© 2026 Dylan Westra (techneut92). Free & open source under GPL-3.0 — a fork of",
+  "settings_footer_copyright": "© 2026 Dylan Westra (techneut92).",
   "settings_footer_project_page": "Project page ↗",
   "manager_title": "Identities",
   "manager_vault_locked": "Vault locked",
@@ -257,5 +257,10 @@
   "manager_log_need_name": "Give it a name or portal.",
   "manager_log_saved": "Saved ✓",
   "language_label": "Language",
-  "language_system": "System default"
+  "language_system": "System default",
+  "main_updates_available": "Updates available",
+  "main_update_available_one": "Update available",
+  "main_update_sub_app": "App v{version}",
+  "main_update_sub_backend": "backend v{version}",
+  "main_update_btn": "Update"
 }

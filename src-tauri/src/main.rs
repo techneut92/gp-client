@@ -1,13 +1,8 @@
-// gpgui — GP Client GUI
-// Copyright (C) 2026 Dylan Westra (techneut92)
+// GP Client GUI
+// Copyright (c) 2026 Dylan Westra (techneut92). All rights reserved. See LICENSE.
 //
-// This program is free software: you can redistribute it and/or modify it under
-// the terms of the GNU General Public License as published by the Free Software
-// Foundation, either version 3 of the License, or (at your option) any later
-// version. This program is distributed WITHOUT ANY WARRANTY. See the LICENSE
-// file in this directory, or <https://www.gnu.org/licenses/>.
-//
-// A fork of yuezk/GlobalProtect-openconnect (GPL-3.0).
+// Links no GPL code: authentication runs in the separate `gpservice` backend,
+// which this GUI drives only over the `gp-protocol` wire contract.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! gpgui — Tauri front-end for GlobalProtect-openconnect (PKCS#11 fork).

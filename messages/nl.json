@@ -197,7 +197,7 @@
   "settings_already_up_to_date": "Al up-to-date.",
   "settings_update_elapsed": "{phase} ({seconds}s)",
   "settings_saved": "Opgeslagen",
-  "settings_footer_copyright": "© 2026 Dylan Westra (techneut92). Gratis & open source onder GPL-3.0 — een fork van",
+  "settings_footer_copyright": "© 2026 Dylan Westra (techneut92).",
   "settings_footer_project_page": "Projectpagina ↗",
   "manager_title": "Identiteiten",
   "manager_vault_locked": "Kluis vergrendeld",
@@ -257,5 +257,10 @@
   "manager_log_need_name": "Geef een naam of portaal op.",
   "manager_log_saved": "Opgeslagen ✓",
   "language_label": "Taal",
-  "language_system": "Systeemstandaard"
+  "language_system": "Systeemstandaard",
+  "main_updates_available": "Updates beschikbaar",
+  "main_update_available_one": "Update beschikbaar",
+  "main_update_sub_app": "App v{version}",
+  "main_update_sub_backend": "backend v{version}",
+  "main_update_btn": "Bijwerken"
 }

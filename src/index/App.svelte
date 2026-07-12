@@ -138,9 +138,16 @@
       // The app and backend update separately; the About page has the unified
       // "Update all" flow (both, narrated, with restart/reboot). Send the user
       // there rather than running a frontend-only update here.
-      const what = u.available && u.backendUpdate ? m.main_update_app_backend() : u.available ? m.main_update_app() : m.main_update_backend();
+      const both = !!(u.available && u.backendUpdate);
+      const title = both ? m.main_updates_available() : m.main_update_available_one();
+      // Version subtitle — list whichever component is behind, with its target
+      // version (skip a component whose latest version is unknown/empty).
+      const parts: string[] = [];
+      if (u.available && u.latest) parts.push(m.main_update_sub_app({ version: u.latest }));
+      if (u.backendUpdate && u.backendLatest) parts.push(m.main_update_sub_backend({ version: u.backendLatest }));
       banner = {
-        text: what,
+        text: title,
+        sub: parts.join(' · '),
         kind: 'info',
         onClick: () => {
           if (hasTauri) void api.openSettings('about');

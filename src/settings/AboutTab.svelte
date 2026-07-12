@@ -12,8 +12,7 @@
 
   let { hidden, hasUpdate = $bindable() }: Props = $props();
 
-  const REPO_URL = 'https://github.com/techneut92/GlobalProtect-openconnect-dw';
-  const UPSTREAM_URL = 'https://github.com/yuezk/GlobalProtect-openconnect';
+  const REPO_URL = 'https://github.com/techneut92/gp-client';
 
   type UpdCell =
     | { kind: 'init' }
@@ -263,8 +262,6 @@
 
   <p class="help">
     {m.settings_footer_copyright()}
-    <!-- svelte-ignore a11y_invalid_attribute -->
-    <a href="#" id="upstreamLink" onclick={(e) => { e.preventDefault(); openExt(UPSTREAM_URL); }}>yuezk/GlobalProtect-openconnect</a>.
     <!-- svelte-ignore a11y_invalid_attribute -->
     <a href="#" id="repoLink" onclick={(e) => { e.preventDefault(); openExt(REPO_URL + '/releases'); }}>{m.settings_footer_project_page()}</a>
   </p>
