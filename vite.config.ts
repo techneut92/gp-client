@@ -14,7 +14,7 @@ export default defineConfig({
     paraglideVitePlugin({
       project: './project.inlang',
       outdir: './src/paraglide',
-      strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
+      strategy: ['preferredLanguage', 'baseLocale'],
     }),
   ],
   // Tauri expects a fixed dev port (tauri.conf.json build.devUrl).

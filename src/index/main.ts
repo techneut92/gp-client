@@ -1,4 +1,5 @@
 import '../lib/nozoom.ts';
+import '../lib/locale';
 import { mount } from 'svelte';
 import App from './App.svelte';
 import '../theme.css';
