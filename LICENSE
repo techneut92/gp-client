@@ -1,0 +1,13 @@
+Copyright (c) 2026 Dylan Westra. All rights reserved.
+
+This source code is made available for reading and evaluation. No license is
+granted to use, copy, modify, merge, publish, distribute, sublicense, or sell
+copies of this software, in whole or in part, without prior written permission
+from the copyright holder.
+
+This project links no GPL code. Its only GP-suite dependency is the
+`gp-protocol` crate (MIT OR Apache-2.0, same author). The privileged backend
+it talks to over that protocol is a separate program and a separate work.
+
+A more permissive or dual license may be adopted later at the copyright
+holder's discretion.

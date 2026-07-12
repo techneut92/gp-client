@@ -1,0 +1,14 @@
+{
+  "identifier": "default",
+  "description": "gpgui window controls, events and dialogs",
+  "windows": ["main", "settings", "manager"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-start-dragging",
+    "core:webview:allow-create-webview-window",
+    "core:event:allow-listen",
+    "core:event:allow-emit"
+  ]
+}

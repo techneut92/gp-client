@@ -1,0 +1,56 @@
+[package]
+name = "gp-client"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+license = "LicenseRef-Proprietary"
+authors = ["Dylan Westra <dylanwestra@gmail.com>"]
+description = "GP Client — GlobalProtect-compatible VPN client GUI (Svelte + Tauri)"
+repository = "https://github.com/techneut92/gp-client"
+
+[[bin]]
+name = "gp-client"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# The owned wire protocol (crates.io) — the only GP-suite dependency.
+gp-protocol = "1.0.0"
+
+anyhow = "1"
+base64 = "0.22"
+directories = "6"
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util", "sync", "signal", "fs"] }
+tauri = "2"
+
+chacha20poly1305 = { version = "0.10", features = ["std"] }
+# Master-PIN → key derivation for the encrypted identity vault.
+argon2 = "0.5"
+# ksni async-io backend (blocking tray on a plain thread; no tokio reactor needed).
+ksni = { version = "0.3", default-features = false, features = ["blocking", "async-io"] }
+# Desktop notifications on connect/disconnect (D-Bus).
+notify-rust = "4"
+# Decode the bundled app icon into an ARGB tray pixmap (status-tinted logo).
+png = "0.18"
+# Optional master-PIN storage in the desktop secret store.
+keyring = { version = "3", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
+# Update check against the GitHub Releases API.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+pollster = "0.4"
+# Native file picker via xdg-desktop-portal (no GTK).
+rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "async-std"] }
+tokio-tungstenite = "0.29"
+# D-Bus client for the gpservice system service (Flatpak transport).
+zbus = "5"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# GTK (the toolkit Tauri uses on Linux) — to set the X11 window-type hint so
+# auto-tiling WMs float the fixed-size window. Version must match Tauri's gtk.
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
