@@ -208,10 +208,21 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
         // SAFETY: set before the auth runs; the GUI is single-connection.
         unsafe { std::env::set_var("GP_PKCS11_MODULE", &p.module_path) };
       }
-      let cert = if p.pin.is_empty() {
+      // PIN: the identity's stored PIN if set, else prompt for it (used once,
+      // never persisted). The root backend can't pop a pinentry, so we collect
+      // it here and pass it in the cert URI.
+      let pin = if p.pin.is_empty() {
+        match crate::pin::prompt(app_handle).await? {
+          Some(pin) => pin,
+          None => bail!("Smart-card PIN entry cancelled"),
+        }
+      } else {
+        p.pin.clone()
+      };
+      let cert = if pin.is_empty() {
         p.cert_uri.clone()
       } else {
-        format!("{}?pin-value={}", p.cert_uri, p.pin)
+        format!("{}?pin-value={}", p.cert_uri, pin)
       };
       (cert, None, None)
     }

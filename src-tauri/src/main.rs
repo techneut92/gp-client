@@ -28,6 +28,7 @@ mod connect;
 mod crypto;
 mod dbus_client;
 mod pkcs11;
+mod pin;
 mod saml;
 mod secrets;
 mod single_instance;
