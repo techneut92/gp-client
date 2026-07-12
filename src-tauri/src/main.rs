@@ -228,7 +228,7 @@ struct SystemInfo {
 }
 
 #[tauri::command]
-fn system_info() -> SystemInfo {
+async fn system_info() -> SystemInfo {
   // The backend lives on the host; under Flatpak `detect()` would report the GUI's
   // own kind ("Flatpak"), so use the host-aware probe for the backend's package mgr.
   let kind = system::host_install_kind();
@@ -247,7 +247,13 @@ fn system_info() -> SystemInfo {
     backend_installed: system::backend_installed(),
     backend_version,
     compatible,
-    install_options: system::install_options(),
+    install_options: {
+      let v = system::latest_backend_release()
+        .await
+        .map(|r| r.version)
+        .unwrap_or_else(|_| system::BACKEND_FALLBACK_VERSION.to_string());
+      system::install_options(&v)
+    },
   }
 }
 
@@ -263,7 +269,13 @@ fn system_info() -> SystemInfo {
 #[tauri::command]
 async fn install_backend(kind: Option<String>, version: Option<String>) -> serde_json::Value {
   let kind = kind.map(|s| system::kind_from_str(&s)).unwrap_or_else(system::host_install_kind);
-  let version = version.unwrap_or_else(|| system::GUI_VERSION.to_string());
+  let version = match version {
+    Some(v) => v,
+    None => system::latest_backend_release()
+      .await
+      .map(|r| r.version)
+      .unwrap_or_else(|_| system::BACKEND_FALLBACK_VERSION.to_string()),
+  };
   let Some(script) = system::backend_install_script(kind, &version) else {
     return serde_json::json!({ "ok": false, "message": "No installer for this system type — use the steps below." });
   };
@@ -295,33 +307,44 @@ struct UpdateInfo {
 async fn check_update() -> UpdateInfo {
   let current = system::GUI_VERSION.to_string();
   let backend = system::backend_version();
-  let repo_url = "https://github.com/techneut92/GlobalProtect-openconnect-dw/releases".to_string();
-  match system::latest_release().await {
+  let gui_repo_url = "https://github.com/techneut92/gp-client/releases".to_string();
+
+  // The GUI updates from its own repo; the backend from the fork. They version
+  // independently now, so check both releases separately.
+  let gui = system::latest_gui_release().await;
+  let backend_latest = system::latest_backend_release().await;
+
+  let backend_update = match backend_latest.as_ref() {
     Ok(r) => {
       let newer = |v: &str| system::version_cmp(&r.version, v) == std::cmp::Ordering::Greater;
+      // Old backend is an update even when the GUI is current. If installed but
+      // its version can't be read, offer the update rather than skipping it.
+      match backend.as_deref() {
+        Some(v) => newer(v),
+        None => system::backend_installed(),
+      }
+    }
+    Err(_) => false,
+  };
+
+  match gui {
+    Ok(r) => {
+      let available = system::version_cmp(&r.version, &current) == std::cmp::Ordering::Greater;
       UpdateInfo {
-        available: newer(&current),
-        // The backend is a separately-installed package, so an old backend is an
-        // available update even when the GUI is already current. If the backend is
-        // installed but its version can't be read (e.g. the host `--version` probe
-        // fails under Flatpak), don't silently treat it as up-to-date — offer the
-        // update rather than skipping it. Not-installed is handled by the install flow.
-        backend_update: match backend.as_deref() {
-          Some(v) => newer(v),
-          None => system::backend_installed(),
-        },
+        available,
+        backend_update,
         current,
         latest: r.version,
-        url: if r.url.is_empty() { repo_url } else { r.url },
-        error: None,
+        url: if r.url.is_empty() { gui_repo_url } else { r.url },
+        error: backend_latest.err(),
       }
     }
     Err(e) => UpdateInfo {
       current,
       latest: String::new(),
       available: false,
-      backend_update: false,
-      url: repo_url,
+      backend_update,
+      url: gui_repo_url,
       error: Some(e),
     },
   }
@@ -915,7 +938,7 @@ fn main() {
       // Background: notify once on launch if a newer release is out. This covers
       // the start-hidden case, where the in-window update banner isn't visible.
       tauri::async_runtime::spawn(async {
-        if let Ok(rel) = system::latest_release().await {
+        if let Ok(rel) = system::latest_gui_release().await {
           if system::version_cmp(&rel.version, system::GUI_VERSION) == std::cmp::Ordering::Greater {
             vpn::notify_desktop(
               "GP Client update available".into(),

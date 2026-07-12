@@ -13,7 +13,12 @@
 use std::path::Path;
 use std::process::Command;
 
-const REPO: &str = "techneut92/GlobalProtect-openconnect-dw";
+/// GUI releases — this app's own repository.
+const GUI_REPO: &str = "techneut92/gp-client";
+/// Backend (gpservice) releases — the GlobalProtect-openconnect-dw fork.
+const BACKEND_REPO: &str = "techneut92/GlobalProtect-openconnect-dw";
+/// Backend version installed when the fork's latest release can't be fetched.
+pub const BACKEND_FALLBACK_VERSION: &str = "1.3.0";
 const FLATPAK_ID: &str = "io.github.techneut92.GPClient";
 pub const GUI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -293,8 +298,16 @@ pub struct Release {
 
 /// Fetch the latest GitHub release. Errors are surfaced as a message so the UI
 /// can show "couldn't check" rather than silently failing.
-pub async fn latest_release() -> Result<Release, String> {
-  let url = format!("https://api.github.com/repos/{REPO}/releases/latest");
+pub async fn latest_gui_release() -> Result<Release, String> {
+  latest_release(GUI_REPO).await
+}
+
+pub async fn latest_backend_release() -> Result<Release, String> {
+  latest_release(BACKEND_REPO).await
+}
+
+async fn latest_release(repo: &str) -> Result<Release, String> {
+  let url = format!("https://api.github.com/repos/{repo}/releases/latest");
   let client = reqwest::Client::builder()
     .user_agent(format!("gp-client/{GUI_VERSION}"))
     .build()
@@ -359,11 +372,11 @@ pub struct InstallOption {
 /// version. The fork ships via GitHub releases (no repo), so dnf/pacman/zypper
 /// install straight from the asset URL while rpm-ostree/apt/apk download first.
 /// Flatpak is excluded — the backend is always a host package.
-pub fn install_options() -> Vec<InstallOption> {
-  let v = GUI_VERSION;
+pub fn install_options(backend_version: &str) -> Vec<InstallOption> {
+  let v = backend_version;
   let arch = std::env::consts::ARCH; // x86_64 / aarch64
   let deb_arch = if arch == "aarch64" { "arm64" } else { "amd64" };
-  let base = format!("https://github.com/{REPO}/releases/download/v{v}");
+  let base = format!("https://github.com/{BACKEND_REPO}/releases/download/v{v}");
   let rpm = format!("globalprotect-openconnect-dw-{v}-1.{arch}.rpm");
   let deb = format!("globalprotect-openconnect-dw_{v}-1_{deb_arch}.deb");
   let pac = format!("globalprotect-openconnect-dw-{v}-1-{arch}.pkg.tar.zst");
@@ -419,7 +432,7 @@ pub fn backend_install_script(kind: InstallKind, version: &str) -> Option<String
   let v = version;
   let arch = std::env::consts::ARCH;
   let deb_arch = if arch == "aarch64" { "arm64" } else { "amd64" };
-  let base = format!("https://github.com/{REPO}/releases/download/v{v}");
+  let base = format!("https://github.com/{BACKEND_REPO}/releases/download/v{v}");
   let rpm = format!("globalprotect-openconnect-dw-{v}-1.{arch}.rpm");
   let deb = format!("globalprotect-openconnect-dw_{v}-1_{deb_arch}.deb");
   let pac = format!("globalprotect-openconnect-dw-{v}-1-{arch}.pkg.tar.zst");
@@ -474,7 +487,7 @@ pub fn run_root_script_wait(script: &str) -> Result<(), String> {
 /// on the host. `--reinstall` replaces any existing install (any origin) and
 /// keeps user data; `--user` needs no root, so there's no password prompt.
 pub fn flatpak_self_update(version: &str) -> Result<(), String> {
-  let url = format!("https://github.com/{REPO}/releases/download/v{version}/{FLATPAK_ID}.flatpak");
+  let url = format!("https://github.com/{GUI_REPO}/releases/download/v{version}/{FLATPAK_ID}.flatpak");
   let script = format!(
     "f=$(mktemp --suffix=.flatpak) && curl -fL -o \"$f\" '{url}' && \
      flatpak install --user --reinstall --assumeyes \"$f\"; r=$?; rm -f \"$f\"; exit $r"
