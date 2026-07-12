@@ -11,7 +11,7 @@
 //! field as a case-insensitive regex, so the single token `gpgui` covers both.
 
 /// Regex/token that matches our window across native and Flatpak builds.
-const MATCH: &str = "gpgui";
+const MATCH: &str = "gp-client";
 
 /// Register float exceptions in whatever tiler is present. Idempotent; safe to
 /// call on every startup.

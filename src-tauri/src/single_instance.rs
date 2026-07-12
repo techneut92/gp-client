@@ -22,7 +22,7 @@ use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
 
 /// Abstract socket name (no leading NUL — `from_abstract_name` adds it). Tied to
 /// the app-id so it never collides with another program.
-const ABSTRACT_NAME: &[u8] = b"io.github.techneut92.gpgui.single-instance";
+const ABSTRACT_NAME: &[u8] = b"io.github.techneut92.GPClient.single-instance";
 
 /// Message the second instance sends to ask the primary to show its window.
 const SHOW: &[u8] = b"show";

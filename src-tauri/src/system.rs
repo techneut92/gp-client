@@ -14,7 +14,7 @@ use std::path::Path;
 use std::process::Command;
 
 const REPO: &str = "techneut92/GlobalProtect-openconnect-dw";
-const FLATPAK_ID: &str = "io.github.techneut92.gpgui";
+const FLATPAK_ID: &str = "io.github.techneut92.GPClient";
 pub const GUI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -296,7 +296,7 @@ pub struct Release {
 pub async fn latest_release() -> Result<Release, String> {
   let url = format!("https://api.github.com/repos/{REPO}/releases/latest");
   let client = reqwest::Client::builder()
-    .user_agent(format!("gpgui/{GUI_VERSION}"))
+    .user_agent(format!("gp-client/{GUI_VERSION}"))
     .build()
     .map_err(|e| e.to_string())?;
   let resp = client

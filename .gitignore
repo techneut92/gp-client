@@ -2,3 +2,4 @@ node_modules/
 dist/
 target/
 src-tauri/target/
+src/paraglide/

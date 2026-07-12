@@ -1,0 +1,14 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "app_name": "GP Client",
+  "status_disconnected": "Disconnected",
+  "status_connecting": "Connecting…",
+  "status_connected": "Connected",
+  "status_reconnecting": "Reconnecting…",
+  "status_disconnecting": "Disconnecting…",
+  "status_error": "Error",
+  "common_cancel": "Cancel",
+  "common_close": "Close",
+  "common_save": "Save",
+  "common_select": "Select…"
+}

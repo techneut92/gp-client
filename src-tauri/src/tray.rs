@@ -176,7 +176,7 @@ fn disabled_item(label: &str) -> MenuItem<GpTray> {
 
 impl Tray for GpTray {
   fn id(&self) -> String {
-    "gpgui-ng".into()
+    "gp-client".into()
   }
 
   fn title(&self) -> String {

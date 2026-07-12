@@ -5,7 +5,7 @@
 //! if no PIN is stored and the app falls back to its own PIN prompt. We never
 //! block startup on the keyring.
 
-const SERVICE: &str = "io.github.techneut92.gpgui";
+const SERVICE: &str = "io.github.techneut92.GPClient";
 const ACCOUNT: &str = "vault-master-pin";
 
 fn entry() -> Option<keyring::Entry> {

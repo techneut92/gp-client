@@ -5,10 +5,10 @@
 
 use std::path::PathBuf;
 
-const ENTRY_NAME: &str = "gpgui.desktop";
+const ENTRY_NAME: &str = "gp-client.desktop";
 /// Installed launcher; preferred so the autostart entry survives `cargo` rebuilds.
-const INSTALLED_BIN: &str = "/usr/bin/gpgui";
-const FLATPAK_ID: &str = "io.github.techneut92.gpgui";
+const INSTALLED_BIN: &str = "/usr/bin/gp-client";
+const FLATPAK_ID: &str = "io.github.techneut92.GPClient";
 
 fn autostart_path() -> Option<PathBuf> {
   // The desktop autostart dir is read by the host session, so it must be the host
@@ -31,7 +31,7 @@ fn exec_line(minimized: bool) -> String {
     std::env::current_exe()
       .ok()
       .and_then(|p| p.to_str().map(str::to_string))
-      .unwrap_or_else(|| "gpgui".to_string())
+      .unwrap_or_else(|| "gp-client".to_string())
   };
   // WEBKIT_DISABLE_DMABUF_RENDERER mirrors the .desktop launcher.
   format!("env WEBKIT_DISABLE_DMABUF_RENDERER=1 {bin}{hidden}")
@@ -52,7 +52,7 @@ pub fn set(enabled: bool, minimized: bool) {
        Name=GP Client\n\
        Comment=Connect to GlobalProtect VPN\n\
        Exec={}\n\
-       Icon=gpgui\n\
+       Icon=gp-client\n\
        Terminal=false\n\
        Categories=Network;Security;\n\
        X-GNOME-Autostart-enabled=true\n",

@@ -1,4 +1,4 @@
-//! Persisted options. Everything here is cached to `~/.config/gpgui-ng/config.json`
+//! Persisted options. Everything here is cached to `~/.config/gp-client/config.json`
 //! — note there is intentionally **no PIN field**, so the PIN is never written to disk.
 
 use std::os::unix::fs::PermissionsExt;
@@ -91,12 +91,12 @@ impl Default for Config {
 }
 
 fn config_path() -> Option<PathBuf> {
-  directories::ProjectDirs::from("", "", "gpgui-ng").map(|d| d.config_dir().join("config.json"))
+  directories::ProjectDirs::from("", "", "gp-client").map(|d| d.config_dir().join("config.json"))
 }
 
 /// Path to the encrypted identity vault.
 pub fn vault_path() -> Option<PathBuf> {
-  directories::ProjectDirs::from("", "", "gpgui-ng").map(|d| d.config_dir().join("identities.enc"))
+  directories::ProjectDirs::from("", "", "gp-client").map(|d| d.config_dir().join("identities.enc"))
 }
 
 /// Resolve the gpservice binary: the installed path if present, else the dev

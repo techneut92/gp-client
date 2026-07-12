@@ -1,0 +1,14 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "app_name": "GP Client",
+  "status_disconnected": "Net ferbûn",
+  "status_connecting": "Ferbine…",
+  "status_connected": "Ferbûn",
+  "status_reconnecting": "Op 'e nij ferbine…",
+  "status_disconnecting": "Ferbining ferbrekke…",
+  "status_error": "Flater",
+  "common_cancel": "Annulearje",
+  "common_close": "Slute",
+  "common_save": "Bewarje",
+  "common_select": "Kies…"
+}

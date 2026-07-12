@@ -1,9 +1,9 @@
-<script>
-  // Main window — port of gpgui ui/index.html begins here.
-  const stage = 'skeleton';
+<script lang="ts">
+  // index window — full port from gpgui ui/index.html in progress.
+  import { m } from '../paraglide/messages.js';
 </script>
 
 <main class="app">
-  <h1>GP Client</h1>
-  <p>Svelte port scaffold — stage: {stage}</p>
+  <h1>{m.app_name()}</h1>
+  <p>{m.status_disconnected()}</p>
 </main>
