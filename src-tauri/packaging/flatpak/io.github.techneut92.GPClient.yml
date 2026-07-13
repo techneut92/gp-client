@@ -1,24 +1,17 @@
-# Flatpak manifest for the GP Client GUI (gp-client).
+# Flatpak manifest for GP Client — the GUI only. The privileged backend
+# (gpservice: openconnect + tun) can't be sandboxed; it ships as a host .deb/.rpm
+# and is reached over D-Bus (--system-talk-name below). The in-app "backend not
+# installed" screen guides the host install.
 #
-# IMPORTANT — this packages the **GUI only**. The privileged backend
-# (gpservice + openconnect + tun) cannot be sandboxed; it ships as a host
-# .deb/.rpm and is reached over D-Bus (`--system-talk-name` below). The
-# in-app "backend not installed" screen guides the host install.
+# Smart-card / YubiKey:
+#   * --socket=pcsc bridges the host pcscd into the sandbox (no USB passthrough),
+#     which is what makes PKCS#11 work.
+#   * The runtime has no opensc, so pcsc-lite (client lib) + opensc are bundled;
+#     the module lands at /app/lib/pkcs11/opensc-pkcs11.so and pkcs11-tool at
+#     /app/bin — both of which gp-client's pkcs11.rs probes for.
 #
-# Smart-card / YubiKey notes:
-#   * `--socket=pcsc` bridges the host pcscd into the sandbox, so the YubiKey is
-#     read by the host (no USB passthrough). This is what makes PKCS#11 work.
-#   * The runtime has no opensc, so we bundle pcsc-lite (client lib) + opensc.
-#     The bundled module lands at /app/lib/pkcs11/opensc-pkcs11.so and the
-#     pkcs11-tool binary at /app/bin — both of which gp-client's pkcs11.rs
-#     probes for.
-#
-# Build with `packaging/flatpak/flatpak-build.sh`, which installs the
-# runtime/SDK, vendors the cargo registry (regenerates `cargo-sources.json` for
-# the offline build), and runs flatpak-builder.
-#
-# Unlike the old gpgui flatpak, the SAML SSO webview runs in-process, so there
-# is no separate gpauth helper to build or bundle.
+# Build with packaging/flatpak/flatpak-build.sh, which installs the runtime/SDK,
+# vendors the cargo registry (cargo-sources.json), and runs flatpak-builder.
 app-id: io.github.techneut92.GPClient
 runtime: org.gnome.Platform
 runtime-version: '50'
