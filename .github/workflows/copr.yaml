@@ -1,0 +1,68 @@
+name: COPR (dry run)
+
+# Builds and validates the source RPM for gp-client. It only *submits* to COPR
+# when a COPR_CONFIG secret is present — otherwise it's a dry run that proves the
+# spec + SRPM are good without publishing anything.
+#
+# To go live later: add the COPR_CONFIG repo secret (your ~/.config/copr token
+# block) and set COPR_PROJECT below. Note COPR build roots need rust >= 1.89
+# (gp-client is edition 2024), so target Fedora 41+/rawhide chroots.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: copr-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  COPR_PROJECT: techneut92/gp-client
+
+jobs:
+  srpm:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - name: Install tooling
+        run: |
+          dnf -y install --setopt=install_weak_deps=False \
+            git rpm-build rpmdevtools copr-cli findutils
+
+      - uses: actions/checkout@v6
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build source RPM
+        run: |
+          version=$(grep -oP '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json | head -1)
+          echo "gp-client version: $version"
+          rpmdev-setuptree
+          git archive --format=tar.gz \
+            --prefix="gp-client-${version}/" \
+            -o ~/rpmbuild/SOURCES/gp-client-${version}.tar.gz HEAD
+          cp src-tauri/packaging/rpm/gp-client.spec ~/rpmbuild/SPECS/
+          rpmbuild -bs ~/rpmbuild/SPECS/gp-client.spec
+          ls -la ~/rpmbuild/SRPMS/
+
+      - name: Submit to COPR (dry run unless COPR_CONFIG is set)
+        env:
+          COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
+        run: |
+          srpm=$(ls ~/rpmbuild/SRPMS/*.src.rpm)
+          if [ -z "$COPR_CONFIG" ]; then
+            echo "::notice::Dry run — built and validated $srpm; not submitting (no COPR_CONFIG secret)."
+            exit 0
+          fi
+          mkdir -p ~/.config
+          printf '%s\n' "$COPR_CONFIG" > ~/.config/copr
+          chmod 600 ~/.config/copr
+          echo "Submitting $srpm to $COPR_PROJECT"
+          copr-cli build "$COPR_PROJECT" "$srpm" --nowait
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: srpm
+          path: ~/rpmbuild/SRPMS/*.src.rpm
+          if-no-files-found: error
