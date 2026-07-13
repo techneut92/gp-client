@@ -11,7 +11,10 @@ url="https://github.com/techneut92/gp-client"
 license=('LicenseRef-Proprietary')
 depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator' 'opensc' 'pcsclite')
 makedepends=('rust' 'nodejs' 'pnpm')
-options=('!debug')
+# !lto: Arch enables LTO globally in makepkg.conf, but the `ring` crate's
+# precompiled assembly objects don't survive it — their ring_core_* symbols get
+# dropped and the final link fails with "undefined symbol". Disable LTO here.
+options=('!debug' '!lto')
 
 build() {
   cd "$startdir"

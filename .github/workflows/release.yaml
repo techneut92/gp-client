@@ -110,15 +110,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install flatpak + Builder
+      - name: Install flatpak + flatpak-builder
         run: |
           sudo apt-get update
-          sudo apt-get install -y flatpak
+          sudo apt-get install -y flatpak flatpak-builder
           flatpak remote-add --user --if-not-exists flathub \
             https://flathub.org/repo/flathub.flatpakrepo
-          # Use the org.flatpak.Builder flatpak (newer, consistent across arches)
-          # rather than the distro flatpak-builder, which built opensc unreliably.
-          flatpak install -y --user flathub org.flatpak.Builder
 
       - uses: pnpm/action-setup@v5
         with:
@@ -141,8 +138,7 @@ jobs:
           flatpak install -y --user flathub \
             org.gnome.Platform//50 org.gnome.Sdk//50 \
             org.freedesktop.Sdk.Extension.rust-stable//25.08
-          flatpak run org.flatpak.Builder --user --force-clean \
-            --install-deps-from=flathub \
+          flatpak-builder --user --force-clean --install-deps-from=flathub \
             --repo=flatpak-repo build-dir \
             src-tauri/packaging/flatpak/io.github.techneut92.GPClient.yml
           flatpak build-bundle flatpak-repo \
@@ -167,7 +163,7 @@ jobs:
       - name: Install build tooling
         run: |
           pacman -Syu --noconfirm --needed \
-            base-devel git rustup nodejs pnpm \
+            base-devel git rust nodejs pnpm \
             webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg \
             opensc pcsclite openssl pkgconf
 
@@ -185,9 +181,7 @@ jobs:
       - name: Build package
         run: |
           cp src-tauri/packaging/arch/PKGBUILD .
-          # rustup's official toolchain links the `ring` crate correctly; the
-          # distro `rust` package left ring_core_* symbols undefined.
-          su builder -c "rustup default stable && makepkg -f --noconfirm"
+          su builder -c "makepkg -f --noconfirm"
 
       - uses: actions/upload-artifact@v7
         with:

@@ -85,6 +85,12 @@ modules:
     # 0.26.0 still trips them, so don't treat warnings as errors.
     build-options:
       cflags: -Wno-error
+      # Point opensc straight at the pcsc-lite we built above, instead of relying
+      # on pkg-config auto-detection (which intermittently failed to find
+      # winscard.h on x86_64 CI runners).
+      env:
+        PCSC_CFLAGS: -I/app/include/PCSC
+        PCSC_LIBS: -L/app/lib -lpcsclite
     # bash-completion's pkg-config dir resolves to the read-only /usr; redirect it
     # into the app prefix.
     make-install-args:
