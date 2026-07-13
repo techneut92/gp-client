@@ -155,10 +155,22 @@ jobs:
   # Arch Linux package (.pkg.tar.zst) — built in an archlinux container.
   # ---------------------------------------------------------------------------
   arch:
-    name: arch (x86_64)
-    runs-on: ubuntu-24.04
+    name: arch (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+            image: archlinux:latest
+          # The official archlinux image is x86_64-only; Arch Linux ARM ships as
+          # a separate image.
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+            image: menci/archlinuxarm:latest
+    runs-on: ${{ matrix.runner }}
     container:
-      image: archlinux:latest
+      image: ${{ matrix.image }}
     steps:
       - name: Install build tooling
         run: |
@@ -185,7 +197,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: arch-x86_64
+          name: arch-${{ matrix.arch }}
           path: '*.pkg.tar.zst'
           if-no-files-found: error
 
@@ -193,8 +205,16 @@ jobs:
   # Alpine package (.apk) — built in an alpine container.
   # ---------------------------------------------------------------------------
   apk:
-    name: apk (x86_64)
-    runs-on: ubuntu-24.04
+    name: apk (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
     container:
       image: alpine:latest
     steps:
@@ -238,7 +258,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: apk-x86_64
+          name: apk-${{ matrix.arch }}
           path: apk-out/**/*.apk
           if-no-files-found: error
 
