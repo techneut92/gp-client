@@ -1,0 +1,248 @@
+name: Release
+
+# Build every distributable format for gp-client and attach them to a GitHub
+# Release. Publishing to COPR (.rpm) / OBS (.deb) is a separate, later step —
+# this workflow only *builds* the artifacts.
+#
+# Formats × arches:
+#   - .deb / .rpm / AppImage  — via `tauri build` (x86_64 + aarch64)
+#   - .flatpak                — via flatpak-builder (x86_64 + aarch64)
+#   - Arch .pkg.tar.zst       — in an archlinux container (x86_64)
+#   - Alpine .apk             — in an alpine container (x86_64)
+#
+# NOTE: CI can't be validated locally — expect a first-run shakeout. Trigger it
+# with a `v*` tag, or manually via workflow_dispatch.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Native bundles produced by Tauri itself: .deb, .rpm and AppImage.
+  # ---------------------------------------------------------------------------
+  tauri-bundles:
+    name: bundles (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install system dependencies (Tauri v2 / WebKitGTK 4.1)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            patchelf \
+            rpm \
+            file
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build bundles (.deb, .rpm, AppImage)
+        # `tauri build` runs `pnpm build` (beforeBuildCommand) and compiles in
+        # production mode (custom-protocol), so the embedded frontend is used.
+        run: pnpm tauri build --bundles deb,rpm,appimage
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist-artifacts
+          find src-tauri/target/release/bundle -type f \
+            \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) \
+            -exec cp {} dist-artifacts/ \;
+          ls -la dist-artifacts
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bundles-${{ matrix.arch }}
+          path: dist-artifacts/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Flatpak — built from the committed manifest + cargo-sources.json.
+  # ---------------------------------------------------------------------------
+  flatpak:
+    name: flatpak (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:gnome-48
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Build the frontend (dist/)
+        # The flatpak manifest embeds the prebuilt dist/ (tauri-build reads it at
+        # compile time); build it before flatpak-builder runs.
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: io.github.techneut92.GPClient-${{ matrix.arch }}.flatpak
+          manifest-path: src-tauri/packaging/flatpak/io.github.techneut92.GPClient.yml
+          cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: flatpak-${{ matrix.arch }}
+          path: '*.flatpak'
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Arch Linux package (.pkg.tar.zst) — built in an archlinux container.
+  # ---------------------------------------------------------------------------
+  arch:
+    name: arch (x86_64)
+    runs-on: ubuntu-24.04
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install build tooling
+        run: |
+          pacman -Syu --noconfirm --needed \
+            base-devel git rust nodejs pnpm \
+            webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg \
+            openssl pkgconf
+
+      - uses: actions/checkout@v6
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # makepkg refuses to run as root; build under a non-privileged user.
+      - name: Prepare builder user
+        run: |
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Build package
+        run: |
+          cp src-tauri/packaging/arch/PKGBUILD .
+          su builder -c "makepkg -f --noconfirm"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arch-x86_64
+          path: '*.pkg.tar.zst'
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Alpine package (.apk) — built in an alpine container.
+  # ---------------------------------------------------------------------------
+  apk:
+    name: apk (x86_64)
+    runs-on: ubuntu-24.04
+    container:
+      image: alpine:latest
+    steps:
+      - name: Install build tooling
+        run: |
+          apk add --no-cache \
+            alpine-sdk git cargo nodejs npm \
+            webkit2gtk-4.1-dev gtk+3.0-dev libayatana-appindicator-dev \
+            librsvg-dev openssl-dev
+          npm install -g pnpm
+
+      - uses: actions/checkout@v6
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build package
+        # abuild runs as a non-root user with a signing key.
+        run: |
+          adduser -D builder
+          addgroup builder abuild
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          su builder -c '
+            abuild-keygen -a -n
+            cd src-tauri/packaging/alpine
+            REPODEST="$GITHUB_WORKSPACE/apk-out" abuild -r
+          '
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: apk-x86_64
+          path: apk-out/**/*.apk
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Attach everything to the GitHub Release (tag pushes only).
+  # ---------------------------------------------------------------------------
+  release:
+    name: GitHub Release
+    needs: [tauri-bundles, flatpak, arch, apk]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f \
+            \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \
+               -o -name '*.flatpak' -o -name '*.pkg.tar.zst' -o -name '*.apk' \) \
+            -exec cp {} release/ \;
+          ls -la release
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          fail_on_unmatched_files: true
