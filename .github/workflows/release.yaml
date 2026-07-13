@@ -174,6 +174,9 @@ jobs:
     steps:
       - name: Install build tooling
         run: |
+          # pacman 7's download sandbox (Landlock) can't initialize inside the
+          # ARM container; disable it so pacman works on both arches.
+          sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
           pacman -Syu --noconfirm --needed \
             base-devel git rust nodejs pnpm \
             webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg \
@@ -202,7 +205,9 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
-  # Alpine package (.apk) — built in an alpine container.
+  # Alpine package (.apk). Checkout runs on the host (JavaScript actions can't
+  # run inside an Alpine/musl container on arm64), then the build runs in a
+  # manually-invoked Alpine container.
   # ---------------------------------------------------------------------------
   apk:
     name: apk (${{ matrix.arch }})
@@ -215,45 +220,39 @@ jobs:
           - runner: ubuntu-24.04-arm
             arch: aarch64
     runs-on: ${{ matrix.runner }}
-    container:
-      image: alpine:latest
     steps:
-      - name: Install build tooling
-        run: |
-          # Ensure the community repo is enabled (opensc / pcsc-lite live there)
-          # and the package index is fresh, then install build + runtime deps.
-          . /etc/os-release
-          v=$(echo "$VERSION_ID" | cut -d. -f1,2)
-          printf '%s\n' \
-            "https://dl-cdn.alpinelinux.org/alpine/v$v/main" \
-            "https://dl-cdn.alpinelinux.org/alpine/v$v/community" \
-            > /etc/apk/repositories
-          apk update
-          apk add --no-cache \
-            alpine-sdk git cargo nodejs npm \
-            webkit2gtk-4.1-dev gtk+3.0-dev libayatana-appindicator-dev \
-            librsvg-dev openssl-dev \
-            opensc pcsc-lite
-          npm install -g pnpm
-
       - uses: actions/checkout@v6
 
-      - name: Trust the workspace
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: Build package
-        # abuild runs as a non-root user with a signing key.
+      - name: Build .apk in an Alpine container
         run: |
-          adduser -D builder
-          addgroup builder abuild
-          chown -R builder:builder "$GITHUB_WORKSPACE"
-          su builder -c 'abuild-keygen -a -n'
-          # Trust the freshly generated key so `abuild -r` can sign + index the repo
-          # (otherwise the built .apk is rejected as an UNTRUSTED signature).
-          cp /home/builder/.abuild/*.rsa.pub /etc/apk/keys/
-          su builder -c '
-            cd src-tauri/packaging/alpine
-            REPODEST="$GITHUB_WORKSPACE/apk-out" abuild -r
+          docker run --rm -v "$PWD:/src" -w /src alpine:latest sh -euc '
+            # Enable community (opensc / pcsc-lite live there) and refresh the index.
+            . /etc/os-release
+            v=$(echo "$VERSION_ID" | cut -d. -f1,2)
+            printf "%s\n" \
+              "https://dl-cdn.alpinelinux.org/alpine/v$v/main" \
+              "https://dl-cdn.alpinelinux.org/alpine/v$v/community" \
+              > /etc/apk/repositories
+            apk update
+            apk add --no-cache \
+              alpine-sdk git cargo nodejs npm \
+              webkit2gtk-4.1-dev gtk+3.0-dev libayatana-appindicator-dev \
+              librsvg-dev openssl-dev \
+              opensc pcsc-lite
+            npm install -g pnpm
+
+            adduser -D builder
+            addgroup builder abuild
+            chown -R builder:builder /src
+            git config --global --add safe.directory /src
+
+            su builder -c "abuild-keygen -a -n"
+            # Trust the freshly generated key so abuild can sign + index the repo.
+            cp /home/builder/.abuild/*.rsa.pub /etc/apk/keys/
+            su builder -c "
+              cd /src/src-tauri/packaging/alpine
+              REPODEST=/src/apk-out abuild -r
+            "
           '
 
       - uses: actions/upload-artifact@v7
