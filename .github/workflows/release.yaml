@@ -107,11 +107,15 @@ jobs:
           - runner: ubuntu-24.04-arm
             arch: aarch64
     runs-on: ${{ matrix.runner }}
-    container:
-      image: bilelmoussaoui/flatpak-github-actions:gnome-48
-      options: --privileged
     steps:
       - uses: actions/checkout@v6
+
+      - name: Install flatpak + flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub \
+            https://flathub.org/repo/flathub.flatpakrepo
 
       - uses: pnpm/action-setup@v5
         with:
@@ -129,11 +133,17 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
 
-      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-        with:
-          bundle: io.github.techneut92.GPClient-${{ matrix.arch }}.flatpak
-          manifest-path: src-tauri/packaging/flatpak/io.github.techneut92.GPClient.yml
-          cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
+      - name: Build the Flatpak bundle
+        run: |
+          flatpak install -y --user flathub \
+            org.gnome.Platform//50 org.gnome.Sdk//50 \
+            org.freedesktop.Sdk.Extension.rust-stable//25.08
+          flatpak-builder --user --force-clean --install-deps-from=flathub \
+            --repo=flatpak-repo build-dir \
+            src-tauri/packaging/flatpak/io.github.techneut92.GPClient.yml
+          flatpak build-bundle flatpak-repo \
+            "io.github.techneut92.GPClient-${{ matrix.arch }}.flatpak" \
+            io.github.techneut92.GPClient master
 
       - uses: actions/upload-artifact@v7
         with:
@@ -155,7 +165,7 @@ jobs:
           pacman -Syu --noconfirm --needed \
             base-devel git rust nodejs pnpm \
             webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg \
-            openssl pkgconf
+            opensc pcsclite openssl pkgconf
 
       - uses: actions/checkout@v6
 
@@ -190,10 +200,20 @@ jobs:
     steps:
       - name: Install build tooling
         run: |
+          # Ensure the community repo is enabled (opensc / pcsc-lite live there)
+          # and the package index is fresh, then install build + runtime deps.
+          . /etc/os-release
+          v=$(echo "$VERSION_ID" | cut -d. -f1,2)
+          printf '%s\n' \
+            "https://dl-cdn.alpinelinux.org/alpine/v$v/main" \
+            "https://dl-cdn.alpinelinux.org/alpine/v$v/community" \
+            > /etc/apk/repositories
+          apk update
           apk add --no-cache \
             alpine-sdk git cargo nodejs npm \
             webkit2gtk-4.1-dev gtk+3.0-dev libayatana-appindicator-dev \
-            librsvg-dev openssl-dev
+            librsvg-dev openssl-dev \
+            opensc pcsc-lite
           npm install -g pnpm
 
       - uses: actions/checkout@v6

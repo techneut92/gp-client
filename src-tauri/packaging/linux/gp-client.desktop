@@ -1,5 +1,5 @@
 [Desktop Entry]
-Categories={{categories}}
+Categories=Network;Security;
 {{#if comment}}Comment={{comment}}
 {{/if}}Exec={{exec}} %u
 Icon={{icon}}
