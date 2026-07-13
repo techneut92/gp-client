@@ -1,0 +1,12 @@
+[Desktop Entry]
+Categories={{categories}}
+{{#if comment}}Comment={{comment}}
+{{/if}}Exec={{exec}} %u
+Icon={{icon}}
+Name={{name}}
+Terminal=false
+Type=Application
+StartupNotify=true
+StartupWMClass=io.github.techneut92.GPClient
+Keywords=VPN;GlobalProtect;OpenConnect;PKCS11;
+MimeType=x-scheme-handler/globalprotectcallback;
