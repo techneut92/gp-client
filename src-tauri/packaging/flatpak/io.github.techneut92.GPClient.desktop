@@ -2,7 +2,11 @@
 Type=Application
 Name=GP Client
 GenericName=VPN Client
+GenericName[nl]=VPN-client
+GenericName[fy]=VPN-client
 Comment=Connect to GlobalProtect VPN (smart-card / certificate)
+Comment[nl]=Verbind met GlobalProtect-VPN (smartcard / certificaat)
+Comment[fy]=Ferbyn mei GlobalProtect-VPN (smartcard / sertifikaat)
 Exec=gp-client %u
 Icon=io.github.techneut92.GPClient
 Terminal=false

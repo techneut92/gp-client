@@ -1,7 +1,12 @@
 [Desktop Entry]
 Categories=Network;Security;
 {{#if comment}}Comment={{comment}}
-{{/if}}Exec={{exec}} %u
+{{/if}}Comment[nl]=Verbind met GlobalProtect-VPN (smartcard / certificaat)
+Comment[fy]=Ferbyn mei GlobalProtect-VPN (smartcard / sertifikaat)
+GenericName=VPN Client
+GenericName[nl]=VPN-client
+GenericName[fy]=VPN-client
+Exec={{exec}} %u
 Icon={{icon}}
 Name={{name}}
 Terminal=false
