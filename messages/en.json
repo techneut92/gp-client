@@ -165,6 +165,8 @@
   "settings_update_check_prompt": "Check for the latest release.",
   "settings_check_updates": "Check for updates",
   "settings_check_again": "Check again",
+  "settings_check_uptodate": "You're on the latest version.",
+  "settings_check_found": "Updates available — see below.",
   "settings_update_all": "Update all",
   "settings_restart_now": "Restart now",
   "settings_reboot_now": "Reboot now",

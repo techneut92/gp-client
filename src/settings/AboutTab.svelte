@@ -39,6 +39,8 @@
   let updBackend = false;
   let updateAllVisible = $state(false);
   let updating = $state(false);
+  let checking = $state(false);
+  let checkMsgTimer: ReturnType<typeof setTimeout> | undefined;
   let restartVisible = $state(false);
   let restartText = $state(m.settings_restart_now());
   let restartCmd: 'reboot_host' | 'restart_app' = 'restart_app';
@@ -54,24 +56,26 @@
   const APP_ICON = 'M12 3l7 3v5c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6l7-3z';
   const BE_ICON = 'M4 5h16v6H4zM4 13h16v6H4zM8 8h.01M8 16h.01';
   type UpdRow = { icon: string; comp: string; ver: string; spin: boolean; label: string; pill: string };
-  function buildRow(icon: string, comp: string, cell: UpdCell, cur: string, isUpd: boolean): UpdRow {
+  function buildRow(icon: string, comp: string, cell: UpdCell, cur: string, isUpd: boolean, isChecking: boolean): UpdRow {
     if (isUpd) return { icon, comp, ver: cur, spin: true, label: m.settings_updating(), pill: 'run' };
+    if (isChecking || cell.kind === 'init') return { icon, comp, ver: cur, spin: true, label: m.settings_checking(), pill: 'run' };
     if (cell.kind === 'avail') return { icon, comp, ver: `v${cell.current} → v${cell.latest}`, spin: false, label: m.settings_update_ready(), pill: 'avail' };
-    if (cell.kind === 'current') return { icon, comp, ver: cur, spin: false, label: m.settings_up_to_date(), pill: 'ok' };
-    if (cell.kind === 'init') return { icon, comp, ver: cur, spin: true, label: m.settings_checking(), pill: 'run' };
-    return { icon, comp, ver: cur, spin: false, label: '—', pill: 'muted' };
+    // Anything else — on the latest, or nothing newer to compare against — reads
+    // as "Up to date" rather than a bare dash.
+    return { icon, comp, ver: cur, spin: false, label: m.settings_up_to_date(), pill: 'ok' };
   }
-  // Hero subtitle suffix: "· update available" when either is behind, else "· up to date".
+  // Hero subtitle suffix: "· update available" when either is behind, "· up to
+  // date" once a check has settled, nothing while the first check is running.
   const heroSuffix = $derived(
     guiUpd.kind === 'avail' || beUpd.kind === 'avail'
       ? ' · ' + m.settings_update_ready()
-      : guiUpd.kind === 'current' && (beUpd.kind === 'current' || beUpd.kind === 'dash')
-        ? ' · ' + m.settings_up_to_date()
-        : '',
+      : checking || guiUpd.kind === 'init' || beUpd.kind === 'init'
+        ? ''
+        : ' · ' + m.settings_up_to_date(),
   );
   const updRows = $derived<UpdRow[]>([
-    buildRow(APP_ICON, m.settings_app_section(), guiUpd, aboutGuiVer, updating && updGui),
-    buildRow(BE_ICON, m.settings_backend_section(), beUpd, backendText, updating && updBackend),
+    buildRow(APP_ICON, m.settings_app_section(), guiUpd, aboutGuiVer, updating && updGui, checking),
+    buildRow(BE_ICON, m.settings_backend_section(), beUpd, backendText, updating && updBackend, checking),
   ]);
 
   export async function loadAbout(): Promise<void> {
@@ -235,8 +239,19 @@
       openExt(updateUrl);
       return;
     }
-    updateStatus = m.settings_checking();
-    await loadAbout();
+    // Give the click visible feedback: spin the rows while checking, then leave
+    // a short-lived confirmation so it's clear the check actually ran.
+    clearTimeout(checkMsgTimer);
+    checking = true;
+    setUbLog('', '');
+    try {
+      await loadAbout();
+    } finally {
+      checking = false;
+    }
+    const anyAvail = guiUpd.kind === 'avail' || beUpd.kind === 'avail';
+    setUbLog(anyAvail ? m.settings_check_found() : m.settings_check_uptodate(), anyAvail ? '' : 'ok');
+    checkMsgTimer = setTimeout(() => setUbLog('', ''), 5000);
   }
 </script>
 
@@ -279,14 +294,14 @@
     <div class="drow"><div class="k">{m.settings_lbl_version()}</div><div class="v" id="aboutGuiVer">{aboutGuiVer}</div></div>
     <div class="drow"><div class="k">{m.settings_running_as()}</div><div class="v" id="aboutRunning">{aboutRunning}</div></div>
     <div class="drow" id="aboutRuntimeRow" hidden={!runtimeVisible}><div class="k">{m.settings_flatpak_runtime()}</div><div class="v" id="aboutRuntime">{aboutRuntime}</div></div>
-    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutGuiUpd">{#if guiUpd.kind === 'init'}—{:else if guiUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if guiUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:#6ee7b7; font-weight:600">{m.settings_update_ready()} — v{guiUpd.latest}</span>{/if}</div></div>
+    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutGuiUpd">{#if guiUpd.kind === 'avail'}<span style="color:#6ee7b7; font-weight:600">{m.settings_update_ready()} — v{guiUpd.latest}</span>{:else}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{/if}</div></div>
   </div>
 
   <div class="lbl" style="margin-top:16px;">{m.settings_backend_section()}</div>
   <div class="detail-card">
     <div class="drow"><div class="k">{m.settings_lbl_version()}</div><div class="v" id="aboutBackend">{#if backendState === 'unknown'}—{:else if backendState === 'missing'}<span style="color:var(--red)">{m.settings_not_installed()}</span>{:else}{backendText}{/if}</div></div>
     <div class="drow"><div class="k">{m.settings_install_type()}</div><div class="v" id="aboutKind">{aboutKind}</div></div>
-    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutBeUpd">{#if beUpd.kind === 'init'}—{:else if beUpd.kind === 'dash'}<span style="color:var(--muted)">—</span>{:else if beUpd.kind === 'current'}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{:else}<span style="color:#6ee7b7; font-weight:600">{m.settings_update_ready()} — v{beUpd.latest}</span>{/if}</div></div>
+    <div class="drow"><div class="k">{m.settings_updates()}</div><div class="v" id="aboutBeUpd">{#if beUpd.kind === 'avail'}<span style="color:#6ee7b7; font-weight:600">{m.settings_update_ready()} — v{beUpd.latest}</span>{:else if backendState === 'missing'}<span style="color:var(--muted)">—</span>{:else}<span style="color:var(--muted)">{m.settings_up_to_date()}</span>{/if}</div></div>
   </div>
 
   <div class="lbl" style="margin-top:16px;">{m.settings_system_section()}</div>

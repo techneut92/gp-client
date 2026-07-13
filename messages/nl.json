@@ -165,6 +165,8 @@
   "settings_update_check_prompt": "Controleer op de nieuwste release.",
   "settings_check_updates": "Controleren op updates",
   "settings_check_again": "Opnieuw controleren",
+  "settings_check_uptodate": "Je gebruikt de nieuwste versie.",
+  "settings_check_found": "Updates beschikbaar — zie hieronder.",
   "settings_update_all": "Alles bijwerken",
   "settings_restart_now": "Nu herstarten",
   "settings_reboot_now": "Nu opnieuw opstarten",
