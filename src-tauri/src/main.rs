@@ -19,6 +19,7 @@
 mod autostart;
 mod config;
 mod connect;
+mod import;
 mod dbus_client;
 mod pkcs11;
 mod pin;
@@ -723,6 +724,10 @@ fn main() {
   // Doing this pre-init is what makes it work in the Flatpak sandbox (where the
   // D-Bus-based plugin didn't) and prevents the relaunch-crash entirely.
   let instance_listener = single_instance::acquire_or_signal();
+
+  // First run only: silently import settings from the predecessor GUI (gpgui).
+  // Runs before the config/vault are loaded, so the imported files are picked up.
+  import::run();
 
   let cfg = Arc::new(Mutex::new(Config::load()));
   // Keep the autostart entry in sync with the preferences (which default on). On

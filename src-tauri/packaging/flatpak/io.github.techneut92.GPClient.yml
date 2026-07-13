@@ -46,6 +46,8 @@ finish-args:
   # Write the host autostart entry and the Pop Shell float-rule (best-effort).
   - --filesystem=xdg-config/autostart:create
   - --filesystem=xdg-config/pop-shell:create
+  # One-time, read-only: import settings from the predecessor gpgui on first run.
+  - --filesystem=~/.var/app/io.github.techneut92.gpgui:ro
 
 modules:
   # libpcsclite client (to reach host pcscd via --socket=pcsc). The client/socket
