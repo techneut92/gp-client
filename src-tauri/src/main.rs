@@ -376,6 +376,22 @@ fn reboot_host() {
   system::reboot_host();
 }
 
+/// True when we migrated from the predecessor gpgui and it's still installed —
+/// so the UI can offer to remove it (identities are already imported by then).
+#[tauri::command]
+fn predecessor_removable() -> bool {
+  import::migrated() && import::predecessor_installed()
+}
+
+/// Remove the predecessor gpgui (Flatpak). Safe to call: it only runs after the
+/// first-run import already copied the identities here.
+#[tauri::command]
+async fn remove_predecessor() -> Result<(), String> {
+  tauri::async_runtime::spawn_blocking(import::remove_predecessor)
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Update action. On Flatpak: download the new `.flatpak` from the release and
 /// reinstall it (no hosted/Flathub remote yet, so `flatpak update` can't pull
 /// it). On native: open the release to grab the new packages.
@@ -813,6 +829,8 @@ fn main() {
       run_update,
       restart_app,
       reboot_host,
+      predecessor_removable,
+      remove_predecessor,
       open_settings,
       save_settings,
       probe_auth,

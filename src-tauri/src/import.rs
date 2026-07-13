@@ -70,5 +70,63 @@ pub fn run() {
     }
   }
 
+  // Record that we migrated, so we can later offer to remove the old app — only
+  // AFTER the identities are safely here.
+  write_marker();
   tracing::info!("imported settings from a previous GP Client (gpgui) install at {}", src.display());
+}
+
+const GPGUI_ID: &str = "io.github.techneut92.gpgui";
+
+fn marker_path() -> Option<PathBuf> {
+  our_dir().map(|d| d.join(".migrated-from-gpgui"))
+}
+fn write_marker() {
+  if let Some(p) = marker_path() {
+    let _ = std::fs::write(p, b"");
+  }
+}
+fn clear_marker() {
+  if let Some(p) = marker_path() {
+    let _ = std::fs::remove_file(p);
+  }
+}
+
+/// True if we imported from gpgui on a previous run (and haven't removed it yet).
+pub fn migrated() -> bool {
+  marker_path().map(|p| p.exists()).unwrap_or(false)
+}
+
+/// Whether the predecessor gpgui is still installed.
+pub fn predecessor_installed() -> bool {
+  if crate::system::is_flatpak() {
+    std::process::Command::new("flatpak-spawn")
+      .args(["--host", "flatpak", "info", GPGUI_ID])
+      .output()
+      .map(|o| o.status.success())
+      .unwrap_or(false)
+  } else {
+    // Native package removal is distro-specific; we detect the binary but leave
+    // the actual uninstall to the user (see remove_predecessor).
+    std::path::Path::new("/usr/bin/gpgui").exists()
+  }
+}
+
+/// Remove the predecessor gpgui — called only after the migration is confirmed
+/// (identities already imported here). Flatpak only; native is left to the user.
+pub fn remove_predecessor() -> Result<(), String> {
+  if !crate::system::is_flatpak() {
+    return Err("Please remove the old app with your package manager.".into());
+  }
+  let out = std::process::Command::new("flatpak-spawn")
+    .args(["--host", "flatpak", "uninstall", "-y", GPGUI_ID])
+    .output()
+    .map_err(|e| format!("couldn't run the uninstaller: {e}"))?;
+  if out.status.success() {
+    clear_marker();
+    Ok(())
+  } else {
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    Err(stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("uninstall failed").trim().chars().take(160).collect())
+  }
 }
