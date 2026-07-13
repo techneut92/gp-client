@@ -51,7 +51,11 @@ pub struct Vault {
 
 fn derive_key(pin: &str, salt: &[u8]) -> Result<[u8; 32]> {
   let mut key = [0u8; 32];
-  argon2::Argon2::default()
+  // Stronger than Argon2's default (19 MiB / t=2) to slow offline brute-force of
+  // a short master PIN if identities.enc is stolen. FIXED params — changing them
+  // invalidates existing vaults, so bump the file format if they ever change.
+  let params = argon2::Params::new(64 * 1024, 3, 1, Some(32)).map_err(|e| anyhow!("argon2 params: {e}"))?;
+  argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params)
     .hash_password_into(pin.as_bytes(), salt, &mut key)
     .map_err(|e| anyhow!("key derivation failed: {e}"))?;
   Ok(key)
@@ -156,12 +160,8 @@ impl Vault {
     out.extend_from_slice(&self.salt);
     out.extend_from_slice(&nonce);
     out.extend_from_slice(&ciphertext);
-    std::fs::write(&self.path, out)?;
-    #[cfg(unix)]
-    {
-      use std::os::unix::fs::PermissionsExt;
-      let _ = std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600));
-    }
-    Ok(())
+    // Atomic + 0600 (temp in the same dir, then rename) so a crash mid-write can't
+    // corrupt the vault and lose every saved identity.
+    crate::config::write_secret_file(&self.path, &out).map_err(|e| anyhow!("writing vault: {e}"))
   }
 }

@@ -341,7 +341,9 @@ async fn check_update() -> UpdateInfo {
         backend_current,
         backend_latest: backend_latest_ver,
         url: if r.url.is_empty() { gui_repo_url } else { r.url },
-        error: backend_latest.err(),
+        // The GUI check succeeded; a backend-release fetch hiccup is reflected by
+        // an empty backend_latest, not surfaced as a check error.
+        error: None,
       }
     }
     Err(e) => UpdateInfo {

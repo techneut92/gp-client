@@ -1,13 +1,10 @@
-//! v2 connect path — the authentication half (gp-client edition).
+//! Connect path — the authentication half (gp-client edition).
 //!
-//! In the original gpgui this file linked the fork's `gpapi`/`auth` crates
-//! (GPL) to run prelogin + SAML in-process. gp-client links **no GPL code**:
-//! the portal/gateway HTTP moves into `gpservice` behind gp-protocol handoff
-//! messages (ownership-plan O2), and the SAML webview is re-authored here.
-//!
-//! Until that handoff lands in gp-protocol/gpservice, `probe` and
-//! `build_connect_request` return descriptive errors — the UI runs, connect
-//! reports "pending".
+//! gp-client links **no GPL code**: the portal/gateway HTTP lives in `gpservice`
+//! behind gp-protocol handoff messages, and the SAML webview is re-authored here.
+//! `probe` + `authenticate` drive the backend over the transport. NOTE: only the
+//! D-Bus transport routes `probe` today; the loopback (WS) transport does not, so
+//! native (non-Flatpak) installs can't authenticate yet — see transport.rs.
 
 use anyhow::{bail, Result};
 use gp_protocol::request::ConnectRequest;

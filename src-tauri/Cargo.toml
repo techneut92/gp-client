@@ -62,3 +62,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # auto-tiling WMs float the fixed-size window. Version must match Tauri's gtk.
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
+# getuid() for the single-instance socket's same-user peer check.
+libc = "0.2"

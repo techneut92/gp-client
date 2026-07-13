@@ -230,9 +230,24 @@ fn open_in_browser(saml_request: &str) -> Result<()> {
     crate::system::open_url(saml_request);
     return Ok(());
   }
-  let mut path = std::env::temp_dir();
-  path.push("gp-client-sso.html");
-  std::fs::write(&path, saml_request).context("staging the browser sign-in page")?;
+  // POST-binding request: stage the auto-submitting HTML in a fresh, unpredictable
+  // 0600 file. create_new (O_EXCL) means a pre-planted symlink at the path can't
+  // redirect the write, and the random name avoids a predictable /tmp target.
+  use chacha20poly1305::aead::{rand_core::RngCore, OsRng};
+  use std::io::Write;
+  use std::os::unix::fs::OpenOptionsExt;
+  let mut rnd = [0u8; 16];
+  OsRng.fill_bytes(&mut rnd);
+  let name: String = format!("gp-client-sso-{}.html", rnd.iter().map(|b| format!("{b:02x}")).collect::<String>());
+  let path = std::env::temp_dir().join(name);
+  let mut f = std::fs::OpenOptions::new()
+    .write(true)
+    .create_new(true)
+    .mode(0o600)
+    .open(&path)
+    .context("staging the browser sign-in page")?;
+  f.write_all(saml_request.as_bytes()).context("staging the browser sign-in page")?;
+  drop(f);
   crate::system::open_url(&format!("file://{}", path.display()));
   Ok(())
 }
