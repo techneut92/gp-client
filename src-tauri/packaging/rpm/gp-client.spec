@@ -1,5 +1,5 @@
 Name:           gp-client
-Version:        1.4.0
+Version:        1.5.0
 Release:        1%{?dist}
 Summary:        GlobalProtect-compatible VPN client GUI (Svelte + Tauri)
 
@@ -59,7 +59,7 @@ install -Dm644 LICENSE %{buildroot}%{_datadir}/licenses/%{name}/LICENSE
 %license %{_datadir}/licenses/%{name}/LICENSE
 
 %changelog
-* Mon Jul 13 2026 Dylan Westra <dylanwestra@gmail.com> - 1.4.0-1
+* Mon Jul 14 2026 Dylan Westra <dylanwestra@gmail.com> - 1.5.0-1
 - New independent GP Client GUI (Svelte + Tauri): connect, identity manager,
   settings and About; smart-card, SAML (embedded or system browser) and password
   sign-in over the gpservice backend.
