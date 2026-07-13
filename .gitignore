@@ -5,3 +5,7 @@ src-tauri/target/
 src/paraglide/
 *.zip
 src-tauri.zip
+
+# Flatpak build outputs
+build-flatpak/
+.flatpak-builder/

@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=GP Client
+GenericName=VPN Client
+Comment=Connect to GlobalProtect VPN (smart-card / certificate)
+Exec=gp-client %u
+Icon=io.github.techneut92.GPClient
+Terminal=false
+Categories=Network;Security;
+Keywords=VPN;GlobalProtect;OpenConnect;PKCS11;
+StartupNotify=true
+StartupWMClass=io.github.techneut92.GPClient
+# Handle the GlobalProtect browser-SSO callback so system-browser sign-in can
+# return the auth cookie to the running app (see saml.rs).
+MimeType=x-scheme-handler/globalprotectcallback;

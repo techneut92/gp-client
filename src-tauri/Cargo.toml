@@ -12,6 +12,14 @@ repository = "https://github.com/techneut92/gp-client"
 name = "gp-client"
 path = "src/main.rs"
 
+[features]
+# Production mode: embed the built frontend (dist/) into the binary and serve it
+# over the `tauri://` custom protocol. `tauri build` enables this automatically;
+# a plain `cargo build` (e.g. the Flatpak/packaging builds) MUST pass
+# `--features custom-protocol`, otherwise the app runs in dev mode and tries to
+# load the frontend from the Vite dev server at localhost:5173.
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
