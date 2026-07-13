@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.techneut92.GPClient</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-Proprietary</project_license>
+  <name>GP Client</name>
+  <summary>Connect to GlobalProtect VPN with smart cards</summary>
+
+  <description>
+    <p>
+      A graphical client for GlobalProtect VPN. Sign in with a smart card /
+      PKCS#11 certificate (such as a YubiKey PIV), SAML single sign-on, or a
+      username and password.
+    </p>
+    <p>
+      Save multiple connections in an encrypted vault, unlock it from your
+      keyring, and manage the VPN from a system-tray icon with desktop
+      notifications.
+    </p>
+    <p>
+      The privileged backend (gpservice) is installed separately as a host
+      package and reached over D-Bus; the in-app screen guides that install.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.techneut92.GPClient.desktop</launchable>
+
+  <!--
+    Flathub REQUIRES at least one reachable screenshot. Add PNGs under
+    docs/screenshots/ in the repo (or host them anywhere stable) and point these
+    URLs at them; `appstreamcli validate` will fail until they resolve.
+  -->
+  <screenshots>
+    <screenshot type="default">
+      <caption>Connect to a GlobalProtect gateway</caption>
+      <image>https://raw.githubusercontent.com/techneut92/gp-client/main/docs/screenshots/connect.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Manage saved connections in an encrypted vault</caption>
+      <image>https://raw.githubusercontent.com/techneut92/gp-client/main/docs/screenshots/manager.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Settings and About</caption>
+      <image>https://raw.githubusercontent.com/techneut92/gp-client/main/docs/screenshots/settings.png</image>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>Network</category>
+    <category>Security</category>
+  </categories>
+
+  <keywords>
+    <keyword>VPN</keyword>
+    <keyword>GlobalProtect</keyword>
+    <keyword>OpenConnect</keyword>
+    <keyword>PKCS11</keyword>
+    <keyword>YubiKey</keyword>
+  </keywords>
+
+  <url type="homepage">https://github.com/techneut92/gp-client</url>
+  <url type="bugtracker">https://github.com/techneut92/gp-client/issues</url>
+  <url type="donation">https://ko-fi.com/techneut92</url>
+
+  <developer id="io.github.techneut92">
+    <name>Dylan Westra</name>
+  </developer>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.4.0" date="2026-07-13">
+      <description>
+        <p>New independent GP Client GUI: connect, identity manager, settings and About; smart-card, SAML (embedded or system browser) and password sign-in over the gpservice backend.</p>
+      </description>
+    </release>
+  </releases>
+</component>

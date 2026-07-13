@@ -1,0 +1,101 @@
+# Flathub submission manifest for GP Client.
+#
+# This is a SUBMISSION-READY variant of ../io.github.techneut92.GPClient.yml.
+# Differences from the CI manifest, all required by Flathub:
+#   * Sources are PINNED (a release tarball + sha256), not a local `dir` — Flathub
+#     builds only from immutable, checksummed sources.
+#   * The build is fully OFFLINE: the release tarball must already contain the
+#     built frontend (dist/) so no `pnpm`/node runs here; Rust builds from the
+#     vendored cargo-sources.json.
+#
+# See README.md in this directory for the manual submission steps (build the
+# tarball, fill in the sha256, copy into the flathub/<app-id> repo, open the PR
+# yourself).
+app-id: io.github.techneut92.GPClient
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: gp-client
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --env=WEBKIT_DISABLE_DMABUF_RENDERER=1
+  # Update check hits the GitHub Releases API.
+  - --share=network
+  # Smart card: talk to the host pcscd (YubiKey PIV).
+  - --socket=pcsc
+  # The root backend, over the system bus (installed separately as a host
+  # package — the in-app screen guides that install). REVIEW NOTE: Flathub will
+  # ask about this system-service dependency; be ready to explain it.
+  - --system-talk-name=io.github.techneut92.GPService
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.freedesktop.Flatpak
+  - --filesystem=xdg-config/autostart:create
+  - --filesystem=xdg-config/pop-shell:create
+
+modules:
+  - name: pcsc-lite
+    buildsystem: meson
+    config-opts:
+      - -Dlibsystemd=false
+      - -Dlibudev=false
+      - -Dpolkit=false
+    post-install:
+      - install -Dm644 ../COPYING /app/share/licenses/pcsc-lite/COPYING
+    sources:
+      - type: git
+        url: https://salsa.debian.org/rousseau/PCSC.git
+        tag: '2.5.1'
+        commit: 5b93c58217f3633800264f68054f58c211090b45
+
+  - name: opensc
+    config-opts:
+      - --disable-static
+    build-options:
+      cflags: -Wno-error
+      env:
+        PCSC_CFLAGS: -I/app/include/PCSC
+        PCSC_LIBS: -L/app/lib -lpcsclite
+    make-install-args:
+      - completiondir=/app/share/bash-completion/completions
+    post-install:
+      - install -Dm644 COPYING /app/share/licenses/opensc/COPYING
+    sources:
+      - type: archive
+        url: https://github.com/OpenSC/OpenSC/releases/download/0.26.0/opensc-0.26.0.tar.gz
+        sha256: 837baead45e1505260d868871056150ede6e73d35460a470f2595a9e5e75f82b
+
+  - name: gp-client
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/gp-client/cargo
+        GP_BUILD_KIND: flatpak
+    build-commands:
+      # Offline: the frontend (dist/) is already in the tarball; only Rust builds.
+      - cargo build --release --offline --features custom-protocol --manifest-path src-tauri/Cargo.toml
+      - install -Dm755 src-tauri/target/release/gp-client /app/bin/gp-client
+      - install -Dm644 src-tauri/packaging/flatpak/io.github.techneut92.GPClient.desktop /app/share/applications/io.github.techneut92.GPClient.desktop
+      - install -Dm644 src-tauri/packaging/flatpak/flathub/io.github.techneut92.GPClient.metainfo.xml /app/share/metainfo/io.github.techneut92.GPClient.metainfo.xml
+      - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.techneut92.GPClient.png
+      - install -Dm644 LICENSE /app/share/licenses/io.github.techneut92.GPClient/LICENSE
+    sources:
+      # Release tarball that INCLUDES the prebuilt dist/ and Cargo.lock. Build it
+      # with the command in README.md, upload it to the GitHub release, then fill
+      # in the URL + sha256 here.
+      - type: archive
+        url: https://github.com/techneut92/gp-client/releases/download/v1.4.0/gp-client-1.4.0-flathub.tar.gz
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+      # Vendored crate registry for the offline Rust build. Copy the generated
+      # src-tauri/packaging/flatpak/cargo-sources.json into the flathub repo
+      # next to this manifest.
+      - cargo-sources.json
