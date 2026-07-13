@@ -17,10 +17,8 @@
 //! D-Bus system-service transport slots in — nothing above it changes.
 
 mod autostart;
-mod client;
 mod config;
 mod connect;
-mod crypto;
 mod dbus_client;
 mod pkcs11;
 mod pin;

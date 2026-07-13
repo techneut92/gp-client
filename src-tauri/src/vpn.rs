@@ -250,11 +250,8 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
     opts: p.opts.clone(),
   };
 
-  // Shared loopback secret (used only by the loopback transport).
-  let key = crate::config::load_or_create_api_key();
-
   notifier.log("Connecting to gpservice…");
-  let (transport, mut events) = transport::open(&key).await?;
+  let (transport, mut events) = transport::open().await?;
 
   // Authenticate via the backend handoff: probe (backend runs prelogin + mTLS),
   // run our own SAML webview if needed, then hand the credential back. The
