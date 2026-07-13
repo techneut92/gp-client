@@ -1,14 +1,18 @@
-name: COPR (dry run)
+name: COPR
 
-# Builds and validates the source RPM for gp-client. It only *submits* to COPR
-# when a COPR_CONFIG secret is present — otherwise it's a dry run that proves the
-# spec + SRPM are good without publishing anything.
+# Builds and validates the source RPM for gp-client, and submits it to COPR on a
+# release tag. It only *submits* when a COPR_CONFIG secret is present — without
+# it (or on a manual run) it's a dry run that proves the spec + SRPM without
+# publishing anything.
 #
-# To go live later: add the COPR_CONFIG repo secret (your ~/.config/copr token
-# block) and set COPR_PROJECT below. Note COPR build roots need rust >= 1.89
-# (gp-client is edition 2024), so target Fedora 41+/rawhide chroots.
+# To go live: create the COPR project, add the COPR_CONFIG repo secret (your
+# ~/.config/copr token block), and confirm COPR_PROJECT below. COPR build roots
+# need rust >= 1.89 (gp-client is edition 2024), so enable Fedora 41+/rawhide
+# chroots on the project.
 
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
 
 concurrency:
