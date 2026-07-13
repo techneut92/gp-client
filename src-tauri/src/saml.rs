@@ -11,7 +11,10 @@
 //! response *headers*; that needs a WebKitGTK response hook and is a later
 //! addition — most flows complete via the callback URL handled here.)
 
-use anyhow::{bail, Result};
+use std::sync::{Mutex as StdMutex, OnceLock};
+use std::time::Duration;
+
+use anyhow::{anyhow, bail, Context, Result};
 use base64::Engine;
 use gp_protocol::AuthCredential;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -66,7 +69,7 @@ pub fn parse_callback(url: &str) -> Option<SamlResult> {
     let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
     match k {
       "un" | "saml-username" => res.username = v.to_string(),
-      "prelogin-cookie" | "prelogin-cookie" => res.prelogin_cookie = Some(v.to_string()),
+      "prelogin-cookie" => res.prelogin_cookie = Some(v.to_string()),
       "portal-userauthcookie" => res.portal_userauthcookie = Some(v.to_string()),
       _ => {}
     }
@@ -161,4 +164,75 @@ pub async fn authenticate(app: &AppHandle, saml_request: &str) -> Result<SamlRes
     Some(res) => Ok(res),
     None => bail!("single sign-on was cancelled"),
   }
+}
+
+// ---------------------------------------------------------------------------
+// System-browser SSO
+//
+// Some IdPs refuse to authenticate inside an embedded webview (device-trust /
+// conditional-access policies), so the user can opt to sign in in their real
+// browser (Settings → sign-in method "browser"). The browser can't hand a
+// custom-scheme redirect back to us directly: GlobalProtect always redirects to
+// `globalprotectcallback:<payload>`, so gp-client registers itself as that
+// scheme's handler (the desktop file's `MimeType` + `Exec … %u`). The OS then
+// launches a second gp-client with the URL, which `single_instance` forwards to
+// the running primary — delivered here via `deliver_callback`.
+
+/// The waiter for an in-flight browser sign-in. Only one connection runs at a
+/// time (single-connection app), so a single slot suffices.
+static PENDING_CALLBACK: OnceLock<StdMutex<Option<oneshot::Sender<String>>>> = OnceLock::new();
+
+fn callback_slot() -> &'static StdMutex<Option<oneshot::Sender<String>>> {
+  PENDING_CALLBACK.get_or_init(|| StdMutex::new(None))
+}
+
+/// Deliver a `globalprotectcallback:` URL to a waiting browser sign-in. Returns
+/// `true` if a sign-in was actually waiting for it. Called from
+/// `single_instance::serve` on the primary instance.
+pub fn deliver_callback(url: String) -> bool {
+  if let Some(tx) = callback_slot().lock().unwrap().take() {
+    tx.send(url).is_ok()
+  } else {
+    false
+  }
+}
+
+/// Sign in via the user's system browser, resolving when GlobalProtect redirects
+/// to `globalprotectcallback:` (routed back to us as its scheme handler).
+pub async fn authenticate_browser(saml_request: &str) -> Result<SamlResult> {
+  let (tx, rx) = oneshot::channel::<String>();
+  // Arm the waiter *before* opening the browser so a fast callback can't race us.
+  *callback_slot().lock().unwrap() = Some(tx);
+
+  if let Err(e) = open_in_browser(saml_request) {
+    let _ = callback_slot().lock().unwrap().take();
+    return Err(e);
+  }
+
+  // Generous cap: the user may need to complete MFA in the browser.
+  let url = match tokio::time::timeout(Duration::from_secs(300), rx).await {
+    Ok(Ok(url)) => url,
+    Ok(Err(_)) => bail!("browser sign-in was cancelled"),
+    Err(_) => {
+      let _ = callback_slot().lock().unwrap().take();
+      bail!("timed out waiting for browser sign-in (5 min)");
+    }
+  };
+
+  parse_callback(&url).ok_or_else(|| anyhow!("the browser sign-in returned no cookie"))
+}
+
+/// Open the SAML request in the system browser. A REDIRECT-binding request is a
+/// plain URL; a POST-binding request is an auto-submitting HTML page, which we
+/// stage as a temp file and open.
+fn open_in_browser(saml_request: &str) -> Result<()> {
+  if saml_request.starts_with("http://") || saml_request.starts_with("https://") {
+    crate::system::open_url(saml_request);
+    return Ok(());
+  }
+  let mut path = std::env::temp_dir();
+  path.push("gp-client-sso.html");
+  std::fs::write(&path, saml_request).context("staging the browser sign-in page")?;
+  crate::system::open_url(&format!("file://{}", path.display()));
+  Ok(())
 }

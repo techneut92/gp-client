@@ -186,8 +186,13 @@ pub async fn authenticate(
   // 1. Ask the backend what the gateway wants (it does the mTLS prelogin).
   let credential = match transport.probe(probe).await? {
     ProbeReply::Saml { saml_request, .. } => {
-      // 2a. SAML: run our own webview, hand back the cookie.
-      let result = crate::saml::authenticate(app_handle, &saml_request).await?;
+      // 2a. SAML: either the user's system browser (for IdPs that block embedded
+      // webviews) or our in-process webview. Both return the callback cookie.
+      let result = if p.use_browser {
+        crate::saml::authenticate_browser(&saml_request).await?
+      } else {
+        crate::saml::authenticate(app_handle, &saml_request).await?
+      };
       result.into_credential()
     }
     ProbeReply::Standard { .. } => {
@@ -235,7 +240,13 @@ pub async fn authenticate(
     key_password: p.key_password.clone(),
     ignore_tls_errors: o.ignore_tls_errors,
     os: Some(os),
-    os_version: Some(os_version(&ClientOs::from(p.os.as_str()))),
+    // Honour a user-configured OS-version string (advanced settings); otherwise
+    // fall back to a reasonable per-OS default.
+    os_version: Some(if o.os_version.is_empty() {
+      os_version(&ClientOs::from(p.os.as_str()))
+    } else {
+      o.os_version.clone()
+    }),
     user_agent: Some(p.user_agent.clone()),
     args: args_src.args().clone(),
   })

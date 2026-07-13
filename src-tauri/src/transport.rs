@@ -17,7 +17,7 @@ use tokio::sync::mpsc;
 
 use crate::client::{self, Handle};
 use crate::dbus_client::{self, DbusHandle};
-use gp_protocol::{ConnectAuthRequest, ConnectRequest, DisconnectRequest, ProbeReply, ProbeRequest, VpnState, WsEvent, WsRequest};
+use gp_protocol::{ConnectAuthRequest, DisconnectRequest, ProbeReply, ProbeRequest, VpnState, WsEvent, WsRequest};
 
 pub enum Transport {
   Loopback(Handle),
@@ -25,13 +25,6 @@ pub enum Transport {
 }
 
 impl Transport {
-  pub async fn send_connect(&self, request: ConnectRequest) -> Result<()> {
-    match self {
-      Transport::Loopback(h) => h.send(WsRequest::Connect(Box::new(request))).await,
-      Transport::Dbus(h) => h.send_connect(serde_json::to_string(&request)?).await,
-    }
-  }
-
   pub async fn send_disconnect(&self) -> Result<()> {
     match self {
       Transport::Loopback(h) => h.send(WsRequest::Disconnect(DisconnectRequest)).await,

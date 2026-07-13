@@ -33,11 +33,6 @@ impl DbusHandle {
     Ok(GpServiceProxy::new(&self.conn).await?)
   }
 
-  pub async fn send_connect(&self, request: String) -> Result<()> {
-    self.proxy().await?.connect(request).await?;
-    Ok(())
-  }
-
   pub async fn send_disconnect(&self) -> Result<()> {
     self.proxy().await?.disconnect().await?;
     Ok(())

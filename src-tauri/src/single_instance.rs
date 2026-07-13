@@ -25,7 +25,20 @@ use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
 const ABSTRACT_NAME: &[u8] = b"io.github.techneut92.GPClient.single-instance";
 
 /// Message the second instance sends to ask the primary to show its window.
-const SHOW: &[u8] = b"show";
+const SHOW: &str = "show";
+/// Prefix marking a forwarded SAML browser-SSO callback URL.
+const CALLBACK_PREFIX: &str = "cb:";
+/// The custom URI scheme GlobalProtect redirects to at the end of browser SSO.
+/// A relaunch carrying such an argument is a callback to forward, not a "show".
+const CALLBACK_SCHEME: &str = "globalprotectcallback:";
+
+/// What a relaunch of the app is asking the primary instance to do.
+pub enum Signal {
+  /// Reveal the primary's window (a plain relaunch).
+  Show,
+  /// A browser-SSO callback URL to hand to the waiting sign-in flow.
+  Callback(String),
+}
 
 /// Acquire the single-instance lock.
 ///
@@ -46,8 +59,15 @@ pub fn acquire_or_signal() -> Option<UnixListener> {
     Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
       // A primary is already running — poke it to surface, then bow out. We do
       // this before returning so GTK/Tauri never initializes in this process.
+      // If this relaunch is a browser-SSO callback (the desktop file registers
+      // gp-client as the `globalprotectcallback:` scheme handler and passes the
+      // URL via `%u`), forward the URL so the primary's sign-in flow completes.
       if let Ok(mut stream) = UnixStream::connect_addr(&addr) {
-        let _ = stream.write_all(SHOW);
+        let msg = std::env::args()
+          .find(|a| a.starts_with(CALLBACK_SCHEME))
+          .map(|url| format!("{CALLBACK_PREFIX}{url}"))
+          .unwrap_or_else(|| SHOW.to_string());
+        let _ = stream.write_all(msg.as_bytes());
       }
       std::process::exit(0);
     }
@@ -55,16 +75,22 @@ pub fn acquire_or_signal() -> Option<UnixListener> {
   }
 }
 
-/// Service "show" pings on the primary's listener. Blocks, so run it on its own
-/// thread. `on_show` is called for each relaunch attempt (reveal the window).
-pub fn serve(listener: UnixListener, on_show: impl Fn() + Send + 'static) {
+/// Service relaunch pings on the primary's listener. Blocks, so run it on its own
+/// thread. `on_signal` is called for each relaunch attempt with what it wants
+/// (reveal the window, or deliver a browser-SSO callback URL).
+pub fn serve(listener: UnixListener, on_signal: impl Fn(Signal) + Send + 'static) {
   for stream in listener.incoming() {
     match stream {
       Ok(mut stream) => {
-        // Best-effort read; any contact means "a relaunch happened, surface".
-        let mut buf = [0u8; 8];
-        let _ = stream.read(&mut buf);
-        on_show();
+        // The second instance writes its message and exits, closing the stream —
+        // so a read to EOF gets the whole (possibly long) callback URL.
+        let mut buf = String::new();
+        let _ = stream.read_to_string(&mut buf);
+        let signal = match buf.strip_prefix(CALLBACK_PREFIX) {
+          Some(url) => Signal::Callback(url.to_string()),
+          None => Signal::Show,
+        };
+        on_signal(signal);
       }
       Err(_) => continue,
     }

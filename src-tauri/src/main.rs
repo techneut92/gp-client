@@ -829,8 +829,14 @@ fn main() {
       if let Some(listener) = instance_listener.lock().unwrap().take() {
         let show_handle = handle.clone();
         std::thread::spawn(move || {
-          single_instance::serve(listener, move || {
-            tray::reveal_window(&show_handle);
+          single_instance::serve(listener, move |signal| match signal {
+            single_instance::Signal::Show => tray::reveal_window(&show_handle),
+            // A browser-SSO redirect came back on a relaunch: hand the URL to the
+            // waiting sign-in flow and bring the app forward.
+            single_instance::Signal::Callback(url) => {
+              saml::deliver_callback(url);
+              tray::reveal_window(&show_handle);
+            }
           });
         });
       }
