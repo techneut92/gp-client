@@ -215,10 +215,11 @@ struct SystemInfo {
   flatpak_runtime: Option<String>,
   backend_installed: bool,
   backend_version: Option<String>,
-  /// True when the backend agrees with the GUI on `major.minor` (or the backend
-  /// isn't installed yet — that case is reported via `backend_installed`).
-  /// Patch-level differences are compatible and never warned about.
-  compatible: bool,
+  /// False when an installed backend is older than `MIN_BACKEND` (can't speak the
+  /// v3 auth handoff), so the UI routes to the install/upgrade screen just as it
+  /// does for a missing backend. True when the backend is new enough, or when it's
+  /// present but its version couldn't be read (don't hide a working backend).
+  backend_supported: bool,
   /// Per-OS install steps, so the UI can render and offer a manual override.
   install_options: Vec<system::InstallOption>,
 }
@@ -229,8 +230,11 @@ async fn system_info() -> SystemInfo {
   // own kind ("Flatpak"), so use the host-aware probe for the backend's package mgr.
   let kind = system::host_install_kind();
   let backend_version = system::backend_version();
-  let compatible = match &backend_version {
-    Some(v) => system::same_feature_version(v, system::GUI_VERSION),
+  // An installed-but-too-old backend can't drive the v3 auth handoff, so treat it
+  // like a missing backend. Unknown version (present but unreadable) stays true so
+  // we never hide a working backend behind the install screen.
+  let backend_supported = match &backend_version {
+    Some(v) => system::version_cmp(v, system::MIN_BACKEND) != std::cmp::Ordering::Less,
     None => true,
   };
   SystemInfo {
@@ -242,7 +246,7 @@ async fn system_info() -> SystemInfo {
     flatpak_runtime: system::flatpak_runtime(),
     backend_installed: system::backend_installed(),
     backend_version,
-    compatible,
+    backend_supported,
     install_options: {
       let v = system::latest_backend_release()
         .await

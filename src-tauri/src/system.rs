@@ -17,8 +17,18 @@ use std::process::Command;
 const GUI_REPO: &str = "techneut92/gp-client";
 /// Backend (gpservice) releases — the GlobalProtect-openconnect-dw fork.
 const BACKEND_REPO: &str = "techneut92/GlobalProtect-openconnect-dw";
-/// Backend version installed when the fork's latest release can't be fetched.
-pub const BACKEND_FALLBACK_VERSION: &str = "1.3.0";
+/// Version to install when the GitHub *API* can't tell us the latest release
+/// (`api.github.com` is rate-limited to 60 req/h unauthenticated, so a 403 is
+/// common even with a working connection). The install download itself hits the
+/// release CDN, which has no such limit, so this best-effort guess still yields a
+/// working install URL. Build-time constant — bump it each release so it doesn't
+/// drift. Must be >= `MIN_BACKEND` so the fallback is always a usable backend.
+pub const BACKEND_FALLBACK_VERSION: &str = "1.4.0";
+/// The oldest backend gp-client can connect through. The connect path uses the
+/// v3 auth handoff (gpservice runs prelogin/auth itself over the wire), which
+/// first shipped in the fork's 1.3.1; anything older can't answer `probe` /
+/// `authenticate`, so it's treated like a missing backend (→ install screen).
+pub const MIN_BACKEND: &str = "1.3.1";
 const FLATPAK_ID: &str = "io.github.techneut92.GPClient";
 pub const GUI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -275,18 +285,6 @@ pub fn version_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     }
   }
   std::cmp::Ordering::Equal
-}
-
-/// True when two versions agree on `major.minor` (the `z.y` in `vz.y.x`).
-/// Patch (`x`) differences are treated as compatible, so the GUI only warns
-/// about a GUI↔backend divergence on a feature (minor) or breaking (major)
-/// release — not on every patch bump.
-pub fn same_feature_version(a: &str, b: &str) -> bool {
-  let key = |s: &str| {
-    let p = version_parts(s);
-    (p.first().copied().unwrap_or(0), p.get(1).copied().unwrap_or(0))
-  };
-  key(a) == key(b)
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

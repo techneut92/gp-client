@@ -6,6 +6,8 @@
 
   interface Props {
     show: boolean;
+    /** A backend is installed but too old — show "update" copy instead of "install". */
+    outdated: boolean;
     options: { value: string; label: string }[];
     kind: string;
     option: InstallOption | undefined;
@@ -22,7 +24,7 @@
     onRecheck: () => void;
   }
 
-  let { show, options, kind = $bindable(), option, stepDone, copyAllDone, installing, status, checking, recheckStyle, onKindChange, onInstall, onCopyStep, onCopyAll, onRecheck }: Props = $props();
+  let { show, outdated, options, kind = $bindable(), option, stepDone, copyAllDone, installing, status, checking, recheckStyle, onKindChange, onInstall, onCopyStep, onCopyAll, onRecheck }: Props = $props();
 
   const COPY_ICON = 'M9 9h11v11H9z M5 15V5a2 2 0 0 1 2-2h10';
   const CHECK_ICON = 'M5 12l5 5L20 6';
@@ -35,8 +37,8 @@
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.6" /><rect x="3" y="14" width="18" height="6" rx="1.6" /><path d="M7 7h.01M7 17h.01" /><path d="M11 7h6M11 17h6" /></svg>
         <span class="alert"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0a0c12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.5h.01" /></svg></span>
       </div>
-      <div class="svc-title">{m.main_backend_title()}</div>
-      <div class="svc-sub">{m.main_backend_sub()}</div>
+      <div class="svc-title">{outdated ? m.main_backend_title_update() : m.main_backend_title()}</div>
+      <div class="svc-sub">{outdated ? m.main_backend_sub_update() : m.main_backend_sub()}</div>
     </div>
 
     <div class="svc-section">
@@ -54,7 +56,7 @@
 
     <button class="btn-action svc-install" id="bkInstall" disabled={installing} onclick={onInstall}>
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4M5 21h14" /></svg>
-      <span id="bkInstallLabel">{installing ? m.main_installing() : m.main_install_backend()}</span>
+      <span id="bkInstallLabel">{installing ? (outdated ? m.main_updating() : m.main_installing()) : (outdated ? m.main_update_backend() : m.main_install_backend())}</span>
     </button>
     <div class="bk-status{status && status.kind ? ' ' + status.kind : ''}" id="bkInstallLog" hidden={!status}>{status ? status.msg : ''}</div>
     <div class="svc-or"><span>{m.main_or_manual()}</span></div>

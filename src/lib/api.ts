@@ -62,6 +62,9 @@ export interface SystemInfo {
   installKind: string;
   flatpakRuntime?: string | null;
   backendInstalled: boolean;
+  /** False when an installed backend is older than the minimum gp-client supports
+   *  — routed to the install/upgrade screen just like a missing backend. */
+  backendSupported: boolean;
   backendVersion?: string | null;
   installOptions?: InstallOption[];
   osName: string;

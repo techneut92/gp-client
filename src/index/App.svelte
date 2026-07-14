@@ -70,6 +70,8 @@
   let bkKind = $state('');
   const bkOptions = $derived((sysInfo?.installOptions ?? []).map((o) => ({ value: o.kind, label: o.label })));
   const bkOption = $derived((sysInfo?.installOptions ?? []).find((o) => o.kind === bkKind));
+  // A backend is present but too old — the install screen becomes an upgrade prompt.
+  const bkOutdated = $derived(!!(sysInfo?.backendInstalled && !sysInfo?.backendSupported));
   let stepDone = $state<boolean[]>([]);
   const stepTimers = new Map<number, ReturnType<typeof setTimeout>>();
   let copyAllDone = $state(false);
@@ -103,7 +105,9 @@
     try {
       const si = await api.systemInfo();
       sysInfo = si;
-      if (!si.backendInstalled) {
+      // Missing backend, or one too old to speak the auth handoff — both route to
+      // the install/upgrade screen (installing lands the latest, which upgrades).
+      if (!si.backendInstalled || !si.backendSupported) {
         const opts = (si.installOptions ?? []).map((o) => ({ value: o.kind, label: o.label }));
         // Default to the detected kind when it's a valid backend option, else the first.
         bkKind = opts.some((o) => o.value === si.installKind) ? (si.installKind ?? '') : (opts[0]?.value ?? '');
@@ -519,6 +523,7 @@
   <!-- ============ BACKEND MISSING (privileged service not installed) ============ -->
   <BackendMissing
     show={view === 'backend'}
+    outdated={bkOutdated}
     options={bkOptions}
     bind:kind={bkKind}
     option={bkOption}
