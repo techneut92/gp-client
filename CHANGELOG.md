@@ -17,6 +17,7 @@ fork).
 - GP Client is now a standalone application with its own release line, continuing
   from the earlier gpgui builds and versioning independently of the `gpservice`
   backend.
+- Licensed under the GNU General Public License v3.0-or-later (see `LICENSE`).
 - Multi-language interface: English, Dutch (Nederlands) and Frisian (Frysk),
   including the localized desktop entry.
 - One-time import of settings from the previous gpgui app on first run, with an

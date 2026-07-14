@@ -8,7 +8,7 @@ pkgrel=0
 pkgdesc="GlobalProtect-compatible VPN client GUI (Svelte + Tauri)"
 url="https://github.com/techneut92/gp-client"
 arch="x86_64 aarch64"
-license="LicenseRef-Proprietary"
+license="GPL-3.0-or-later"
 depends="webkit2gtk-4.1 gtk+3.0 libayatana-appindicator opensc pcsc-lite"
 makedepends="cargo nodejs npm"
 # net: pnpm/cargo need network during build. !check: no test suite here.

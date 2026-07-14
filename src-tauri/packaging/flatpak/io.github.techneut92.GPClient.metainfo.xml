@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>io.github.techneut92.GPClient</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>LicenseRef-Proprietary</project_license>
+  <project_license>GPL-3.0-or-later</project_license>
   <name>GP Client</name>
   <summary>Connect to GlobalProtect VPN with smart cards</summary>
 

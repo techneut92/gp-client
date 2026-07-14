@@ -6,17 +6,9 @@ identity vault.
 
 This is the successor GUI to the `gpgui` app inside
 [GlobalProtect-openconnect-dw](https://github.com/techneut92/GlobalProtect-openconnect-dw).
-It talks to the same privileged backend (`gpservice`) over the
-[`gp-protocol`](https://github.com/techneut92/gp-protocol) wire contract
-(loopback WebSocket or D-Bus system service) and links **no GPL code** — see
-`LICENSE`.
-
-## Status
-
-Early port. The Rust application layer (tray, transports, vault, config,
-updater, single-instance) is fully ported and building; the Svelte UI and the
-gp-protocol connect handoff are in progress. Until then, the shipping GUI
-remains the one bundled with the backend releases.
+It talks to the privileged backend (`gpservice`) over the
+[`gp-protocol`](https://github.com/techneut92/gp-protocol) wire contract via the
+D-Bus system service.
 
 ## Development
 
@@ -26,4 +18,26 @@ pnpm tauri dev      # run against a local gpservice
 pnpm tauri build
 ```
 
-Copyright © 2026 Dylan Westra. All rights reserved (see LICENSE).
+The frontend is Svelte; the application layer (tray, D-Bus transport, vault,
+config, updater, single-instance) is Rust/Tauri. The privileged tunnel itself
+runs in `gpservice` — this GUI is unprivileged and drives it over `gp-protocol`.
+
+## License
+
+Copyright © 2026 Dylan Westra (techneut92).
+
+GP Client is free software, licensed under the **GNU General Public License,
+version 3 or later (GPL-3.0-or-later)**. See [`LICENSE`](LICENSE) for the full
+text. As the sole copyright holder, the author may also make the software
+available under other terms.
+
+The GUI itself links no GPL-licensed code; the copyleft backend (`gpservice`) is
+a separate program, reached only over the `gp-protocol` D-Bus contract, and is
+distributed under its own license.
+
+## Trademarks
+
+“GlobalProtect” is a trademark of Palo Alto Networks, Inc. This is an
+independent, community project and is **not** affiliated with, endorsed by, or
+sponsored by Palo Alto Networks. The name is used only to describe
+compatibility.

@@ -3,7 +3,7 @@ Version:        1.5.0
 Release:        1%{?dist}
 Summary:        GlobalProtect-compatible VPN client GUI (Svelte + Tauri)
 
-License:        LicenseRef-Proprietary
+License:        GPL-3.0-or-later
 URL:            https://github.com/techneut92/gp-client
 Source0:        %{name}-%{version}.tar.gz
 

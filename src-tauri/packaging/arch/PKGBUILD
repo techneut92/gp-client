@@ -8,7 +8,7 @@ pkgrel=1
 pkgdesc="GlobalProtect-compatible VPN client GUI (Svelte + Tauri)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/techneut92/gp-client"
-license=('LicenseRef-Proprietary')
+license=('GPL-3.0-or-later')
 depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator' 'opensc' 'pcsclite')
 makedepends=('rust' 'nodejs' 'pnpm')
 # !lto: Arch enables LTO globally in makepkg.conf, but the `ring` crate's
