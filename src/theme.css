@@ -262,7 +262,7 @@ body.settings { background: var(--bg-grad); }
   content: "";
   position: absolute;
   width: 14px; height: 14px;
-  background: url("update-badge.png") center / contain no-repeat;
+  background: url("assets/update-badge.png") center / contain no-repeat;
   pointer-events: none;
 }
 .wbtn.has-update::after { top: -3px; right: -3px; }

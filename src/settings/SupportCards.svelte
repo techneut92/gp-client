@@ -2,8 +2,8 @@
   // Support section: Ko-fi / Revolut / Ethereum donation cards.
   import { m } from '../paraglide/messages.js';
   import { hasTauri, openUrl } from '../lib/api';
-  import revolutQrUrl from '../revolut-qr.png';
-  import ethQrUrl from '../eth-qr.png';
+  import revolutQrUrl from '../assets/revolut-qr.png';
+  import ethQrUrl from '../assets/eth-qr.png';
 
   interface Props {
     hidden: boolean;
