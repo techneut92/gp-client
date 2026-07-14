@@ -11,4 +11,3 @@ build-flatpak/
 .flatpak-builder/
 
 # Private, untracked materials (e.g. Flathub submission prep)
-.private/

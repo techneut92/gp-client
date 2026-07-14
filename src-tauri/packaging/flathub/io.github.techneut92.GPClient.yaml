@@ -1,0 +1,110 @@
+# GP Client — a graphical GlobalProtect VPN client (Svelte + Tauri).
+#
+# The privileged backend (gpservice: openconnect + tun) can't be sandboxed, so it
+# ships as a separate host package and is reached over D-Bus; the in-app screen
+# guides that install. The app builds fully offline: the frontend (dist/) is
+# prebuilt into the source tarball and Rust builds from the vendored
+# cargo-sources.json.
+#
+# Smart cards / YubiKey: --socket=pcsc bridges the host pcscd into the sandbox.
+# The runtime has no opensc, so pcsc-lite (client lib) and opensc are bundled;
+# the module lands at /app/lib/pkcs11/opensc-pkcs11.so.
+app-id: io.github.techneut92.GPClient
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: gp-client
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # webkit2gtk's DMABUF renderer crashes on some Wayland + Mesa setups.
+  - --env=WEBKIT_DISABLE_DMABUF_RENDERER=1
+  # Update check against the GitHub Releases API.
+  - --share=network
+  # Smart card: talk to the host pcscd (YubiKey PIV).
+  - --socket=pcsc
+  # The privileged backend, over the system bus. It's a separately-installed host
+  # service; the app degrades gracefully (in-app install prompt) without it.
+  - --system-talk-name=io.github.techneut92.GPService
+  # "Remember unlock" — store the master PIN in the desktop secret store.
+  - --talk-name=org.freedesktop.secrets
+  # Desktop notifications on connect/disconnect.
+  - --talk-name=org.freedesktop.Notifications
+  # System-tray icon (StatusNotifierItem).
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # Portals: file chooser (cert-file auth) + OpenURI (system-browser SSO).
+  - --talk-name=org.freedesktop.portal.Desktop
+  # flatpak-spawn --host: run host commands (backend install, update, xdg-open).
+  - --talk-name=org.freedesktop.Flatpak
+  # Best-effort host autostart entry + a Pop Shell float rule.
+  - --filesystem=xdg-config/autostart:create
+  - --filesystem=xdg-config/pop-shell:create
+  # One-time, read-only: import settings from the predecessor gpgui on first run.
+  - --filesystem=~/.var/app/io.github.techneut92.gpgui:ro
+
+modules:
+  # libpcsclite client, to reach the host pcscd via --socket=pcsc.
+  - name: pcsc-lite
+    buildsystem: meson
+    config-opts:
+      - -Dlibsystemd=false
+      - -Dlibudev=false
+      - -Dpolkit=false
+    post-install:
+      - install -Dm644 ../COPYING /app/share/licenses/pcsc-lite/COPYING
+    sources:
+      - type: git
+        url: https://salsa.debian.org/rousseau/PCSC.git
+        tag: '2.5.1'
+        commit: 5b93c58217f3633800264f68054f58c211090b45
+
+  # opensc — provides /app/lib/pkcs11/opensc-pkcs11.so and pkcs11-tool.
+  - name: opensc
+    config-opts:
+      - --disable-static
+    build-options:
+      # opensc 0.26.0 trips several legacy-C warnings promoted to errors by GCC 14.
+      cflags: -Wno-error
+      # Point opensc at the pcsc-lite built above instead of pkg-config detection.
+      env:
+        PCSC_CFLAGS: -I/app/include/PCSC
+        PCSC_LIBS: -L/app/lib -lpcsclite
+    make-install-args:
+      - completiondir=/app/share/bash-completion/completions
+    post-install:
+      - install -Dm644 COPYING /app/share/licenses/opensc/COPYING
+    sources:
+      - type: archive
+        url: https://github.com/OpenSC/OpenSC/releases/download/0.26.0/opensc-0.26.0.tar.gz
+        sha256: 837baead45e1505260d868871056150ede6e73d35460a470f2595a9e5e75f82b
+
+  - name: gp-client
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/gp-client/cargo
+        GP_BUILD_KIND: flatpak
+    build-commands:
+      # The frontend (dist/) is already in the source; only Rust builds here.
+      - cargo build --release --offline --features custom-protocol --manifest-path src-tauri/Cargo.toml
+      - install -Dm755 src-tauri/target/release/gp-client /app/bin/gp-client
+      - install -Dm644 src-tauri/packaging/flatpak/io.github.techneut92.GPClient.desktop /app/share/applications/io.github.techneut92.GPClient.desktop
+      - install -Dm644 io.github.techneut92.GPClient.metainfo.xml /app/share/metainfo/io.github.techneut92.GPClient.metainfo.xml
+      - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.techneut92.GPClient.png
+      - install -Dm644 LICENSE /app/share/licenses/io.github.techneut92.GPClient/LICENSE
+    sources:
+      # App source with the prebuilt frontend (dist/) and Cargo.lock included.
+      - type: archive
+        url: https://github.com/techneut92/gp-client/releases/download/v1.5.0/gp-client-1.5.0-flathub.tar.gz
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+      # AppStream metainfo, maintained alongside this manifest.
+      - type: file
+        path: io.github.techneut92.GPClient.metainfo.xml
+      # Vendored crate registry for the offline Rust build.
+      - cargo-sources.json
