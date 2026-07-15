@@ -9,6 +9,7 @@
 // window so the overwrite is installed before the first m.*() call.
 import { overwriteGetLocale, locales, localStorageKey, type Locale } from '../paraglide/runtime.js';
 import { m } from '../paraglide/messages.js';
+import { emit, listen } from '@tauri-apps/api/event';
 
 export type LocaleChoice = 'system' | Locale;
 
@@ -41,20 +42,30 @@ overwriteGetLocale(resolve);
 // Drop any stale cache Paraglide's own strategy may have written previously.
 localStorage.removeItem(localStorageKey);
 
+// Every window (main, settings, manager) installs this on import. When any window
+// changes the locale (applyChoice → emit), all of them reload — otherwise a switch
+// made in Settings leaves the main window's imperatively-built strings (status
+// pill, identity chips) stale in the old language.
+void listen('locale-changed', () => window.location.reload()).catch(() => {});
+
 /// The persisted override, or 'system' when following the OS language.
 export function currentChoice(): LocaleChoice {
   const stored = localStorage.getItem(OVERRIDE_KEY);
   return isLocale(stored) ? stored : 'system';
 }
 
-/// Apply a choice and reload so every window re-renders in the new locale.
+/// Apply a choice and reload EVERY window in the new locale. We broadcast rather
+/// than reload only this window, because a switch made in Settings must also
+/// refresh the main window (whose status pill + identity chips are built
+/// imperatively and don't re-read the locale without a reload).
 export function applyChoice(choice: LocaleChoice): void {
   if (choice === 'system') {
     localStorage.removeItem(OVERRIDE_KEY);
   } else {
     localStorage.setItem(OVERRIDE_KEY, choice);
   }
-  window.location.reload();
+  // Delivered to all windows incl. this one; each reloads via the listener above.
+  void emit('locale-changed').catch(() => window.location.reload());
 }
 
 /// Options for a language dropdown. Language names are endonyms (never
