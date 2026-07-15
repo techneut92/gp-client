@@ -6,7 +6,7 @@
   import { onMount } from 'svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { m } from '../paraglide/messages.js';
-  import { getConfig, hasTauri, onGotoSection, saveSettings, type ConfigMap, type SettingsForm, type UnlistenFn } from '../lib/api';
+  import { getConfig, onGotoSection, saveSettings, type ConfigMap, type SettingsForm, type UnlistenFn } from '../lib/api';
   import { mountShim } from '../lib/shim';
   import GeneralTab from './GeneralTab.svelte';
   import AuthTab from './AuthTab.svelte';
@@ -25,8 +25,7 @@
   }
 
   function onClose(): void {
-    if (hasTauri) void getCurrentWindow().close();
-    else window.close();
+    void getCurrentWindow().close();
   }
 
   // ───────── form model — camelCase keys match Rust SettingsForm ─────────
@@ -65,12 +64,10 @@
     savedTimer = setTimeout(() => {
       savedShow = false;
     }, 1300);
-    if (hasTauri) {
-      try {
-        await saveSettings($state.snapshot(model));
-      } catch {
-        /* ignore */
-      }
+    try {
+      await saveSettings($state.snapshot(model));
+    } catch {
+      /* ignore */
     }
   }
 
@@ -115,20 +112,16 @@
     let unlisten: UnlistenFn | undefined;
     // Deep-link from another window (e.g. the main screen's "update available"
     // banner → About) when this window is already open.
-    if (hasTauri) {
-      void onGotoSection((section) => {
-        if (section) activate(section);
-      }).then((f) => {
-        unlisten = f;
-      });
-    }
+    void onGotoSection((section) => {
+      if (section) activate(section);
+    }).then((f) => {
+      unlisten = f;
+    });
     void (async () => {
-      if (hasTauri) {
-        try {
-          applyConfig(await getConfig());
-        } catch {
-          /* ignore */
-        }
+      try {
+        applyConfig(await getConfig());
+      } catch {
+        /* ignore */
       }
       void aboutRef?.loadAbout();
       // Cold-open deep-link: open_settings stashes the section in a global.

@@ -8,13 +8,9 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
 export type { UnlistenFn };
 
-/** True when running inside the Tauri shell (vs a plain-browser demo). */
-export const hasTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-
-/** Open a URL externally: via the backend on Tauri, a new tab otherwise. */
+/** Open a URL externally via the backend. */
 export function openExt(url: string): void {
-  if (hasTauri) void openUrl(url);
-  else window.open(url, '_blank');
+  void openUrl(url);
 }
 
 // ───────── payload shapes (as read from / sent to the Rust side) ─────────
@@ -217,6 +213,18 @@ export function vaultStatus(): Promise<VaultStatus> {
 
 export function keyringAvailable(): Promise<boolean> {
   return invoke<boolean>('keyring_available');
+}
+
+/** Whether to show the "Import from GP Client" migration screen (fresh install
+ *  with a predecessor gpgui present). */
+export function importAvailable(): Promise<boolean> {
+  return invoke<boolean>('import_available');
+}
+
+/** Import everything from gpgui (identities + settings, incl. auto-unlock), then
+ *  remove the old app and its data. Rejects if the import failed. */
+export function importFromGpgui(): Promise<void> {
+  return invoke<void>('import_from_gpgui');
 }
 
 export function setRememberUnlock(enabled: boolean): Promise<void> {

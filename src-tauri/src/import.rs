@@ -1,14 +1,14 @@
-//! One-time, silent import of settings from the predecessor GUI (gpgui) on
-//! gp-client's first run.
+//! Migration from the predecessor GUI (gpgui). The user drives it from the
+//! "Import from GP Client" screen: [`import_available`] decides whether to show
+//! it, and [`import_now`] copies everything over when they click Import.
 //!
 //! The vault is wire-compatible (identical `Identity`, `[salt][nonce][ct]` layout
 //! and Argon2 params), so `identities.enc` copies over verbatim and the user's
 //! existing master PIN unlocks it. The config deserializes into gp-client's own
 //! `Config` (matching fields carry; gpgui-only fields are ignored, missing ones
-//! default), then re-saves in our format.
+//! default), then re-saves in our format — all settings included.
 //!
-//! Everything here is best-effort: nothing to import, gp-client already used, or
-//! any error — we just carry on. It runs before the config/vault are loaded.
+// TODO(2026-10, GPC-29): delete this whole migration path once users have moved.
 
 use std::path::{Path, PathBuf};
 
@@ -36,44 +36,47 @@ fn has_data(dir: &Path) -> bool {
   dir.join("identities.enc").exists() || dir.join("config.json").exists()
 }
 
-/// Import gpgui's vault + config into gp-client, once, if this is a fresh install.
-pub fn run() {
-  let Some(dst) = our_dir() else { return };
-  // First run only: never touch an install that already has its own data.
-  if has_data(&dst) {
-    return;
+/// Whether to offer the import screen: gp-client has no data of its own yet, and
+/// a predecessor gpgui with data is present to import from.
+pub fn import_available() -> bool {
+  match our_dir() {
+    Some(d) if !has_data(&d) => gpgui_dirs().iter().any(|d| has_data(d)),
+    _ => false,
   }
-  let Some(src) = gpgui_dirs().into_iter().find(|d| has_data(d)) else {
-    return;
-  };
-  if std::fs::create_dir_all(&dst).is_err() {
-    return;
-  }
+}
+
+/// Copy gpgui's vault + config into gp-client. Returns an error (without touching
+/// the source) if anything critical fails, so the caller must NOT remove the old
+/// app unless this succeeded.
+pub fn import_now() -> Result<(), String> {
+  let dst = our_dir().ok_or("couldn't locate gp-client's config directory")?;
+  let src = gpgui_dirs()
+    .into_iter()
+    .find(|d| has_data(d))
+    .ok_or("nothing to import from")?;
+  std::fs::create_dir_all(&dst).map_err(|e| format!("couldn't create the config directory: {e}"))?;
 
   // Vault copies verbatim — identical format + crypto, so the same master PIN
   // unlocks it in gp-client.
   let src_vault = src.join("identities.enc");
   if src_vault.exists() {
-    if let Ok(data) = std::fs::read(&src_vault) {
-      let _ = crate::config::write_secret_file(&dst.join("identities.enc"), &data);
-    }
+    let data = std::fs::read(&src_vault).map_err(|e| format!("couldn't read the vault: {e}"))?;
+    crate::config::write_secret_file(&dst.join("identities.enc"), &data)
+      .map_err(|e| format!("couldn't write the vault: {e}"))?;
   }
 
   // Config: deserialize gpgui's JSON into our Config and re-save in our format.
+  // Carry everything, including "remember unlock" (auto-unlock) — the user set
+  // it once and expects it to survive the move.
   if let Ok(json) = std::fs::read_to_string(src.join("config.json")) {
-    if let Ok(mut cfg) = serde_json::from_str::<crate::config::Config>(&json) {
-      // Don't carry "remember unlock": the master PIN lives in gpgui's keyring
-      // (and Flatpak's secret portal scopes it per-app), so it can't transfer.
-      // The user re-enables it once and gp-client stores its own copy.
-      cfg.remember_unlock = false;
+    if let Ok(cfg) = serde_json::from_str::<crate::config::Config>(&json) {
       cfg.save();
     }
   }
 
-  // Record that we migrated, so we can later offer to remove the old app — only
-  // AFTER the identities are safely here.
   write_marker();
   tracing::info!("imported settings from a previous GP Client (gpgui) install at {}", src.display());
+  Ok(())
 }
 
 const GPGUI_ID: &str = "io.github.techneut92.gpgui";
@@ -112,21 +115,26 @@ pub fn predecessor_installed() -> bool {
   }
 }
 
-/// Remove the predecessor gpgui — called only after the migration is confirmed
-/// (identities already imported here). Flatpak only; native is left to the user.
+/// Remove the predecessor gpgui and its data — called only after [`import_now`]
+/// succeeded. Under Flatpak we uninstall the app with `--delete-data`; natively
+/// we can't remove the distro package, so we at least wipe its data directories.
 pub fn remove_predecessor() -> Result<(), String> {
-  if !crate::system::is_flatpak() {
-    return Err("Please remove the old app with your package manager.".into());
-  }
-  let out = std::process::Command::new("flatpak-spawn")
-    .args(["--host", "flatpak", "uninstall", "-y", GPGUI_ID])
-    .output()
-    .map_err(|e| format!("couldn't run the uninstaller: {e}"))?;
-  if out.status.success() {
-    clear_marker();
-    Ok(())
+  if crate::system::is_flatpak() {
+    let out = std::process::Command::new("flatpak-spawn")
+      .args(["--host", "flatpak", "uninstall", "-y", "--delete-data", GPGUI_ID])
+      .output()
+      .map_err(|e| format!("couldn't run the uninstaller: {e}"))?;
+    if !out.status.success() {
+      let stderr = String::from_utf8_lossy(&out.stderr);
+      return Err(stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("uninstall failed").trim().chars().take(160).collect());
+    }
   } else {
-    let stderr = String::from_utf8_lossy(&out.stderr);
-    Err(stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("uninstall failed").trim().chars().take(160).collect())
+    // Native: leave the package to the user's package manager, but remove the
+    // leftover data so nothing of the old app remains.
+    for dir in gpgui_dirs() {
+      let _ = std::fs::remove_dir_all(&dir);
+    }
   }
+  clear_marker();
+  Ok(())
 }

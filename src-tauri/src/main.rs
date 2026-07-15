@@ -401,6 +401,26 @@ async fn remove_predecessor() -> Result<(), String> {
     .map_err(|e| e.to_string())?
 }
 
+/// Whether to show the "Import from GP Client" migration screen — gp-client is a
+/// fresh install and a predecessor gpgui with data is present.
+#[tauri::command]
+fn import_available() -> bool {
+  import::import_available()
+}
+
+/// Import everything from gpgui (identities + all settings, incl. auto-unlock),
+/// then remove the old app and its data. The old app is only removed if the
+/// import succeeded first.
+#[tauri::command]
+async fn import_from_gpgui() -> Result<(), String> {
+  tauri::async_runtime::spawn_blocking(|| -> Result<(), String> {
+    import::import_now()?;
+    import::remove_predecessor()
+  })
+  .await
+  .map_err(|e| e.to_string())?
+}
+
 /// Update action. On Flatpak: download the new `.flatpak` from the release and
 /// reinstall it (no hosted/Flathub remote yet, so `flatpak update` can't pull
 /// it). On native: open the release to grab the new packages.
@@ -750,9 +770,9 @@ fn main() {
   // D-Bus-based plugin didn't) and prevents the relaunch-crash entirely.
   let instance_listener = single_instance::acquire_or_signal();
 
-  // First run only: silently import settings from the predecessor GUI (gpgui).
-  // Runs before the config/vault are loaded, so the imported files are picked up.
-  import::run();
+  // Migration from the predecessor gpgui is now user-driven: the frontend shows
+  // the "Import from GP Client" screen when `import_available()` is true and calls
+  // `import_from_gpgui` on confirm (see import.rs).
 
   let cfg = Arc::new(Mutex::new(Config::load()));
   // Keep the autostart entry in sync with the preferences (which default on). On
@@ -840,6 +860,8 @@ fn main() {
       reboot_host,
       predecessor_removable,
       remove_predecessor,
+      import_available,
+      import_from_gpgui,
       open_settings,
       save_settings,
       probe_auth,

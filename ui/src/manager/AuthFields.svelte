@@ -2,7 +2,7 @@
   // Method-specific field blocks: certificate file, username/password and
   // the SAML/SSO note. Which block shows follows the selected auth method.
   import { m } from '../paraglide/messages.js';
-  import { browseFile, hasTauri } from '../lib/api';
+  import { browseFile } from '../lib/api';
 
   interface Props {
     method: number;
@@ -16,20 +16,12 @@
   let { method, certFile = $bindable(), keyFile = $bindable(), keyPassword = $bindable(), username = $bindable(), password = $bindable() }: Props = $props();
 
   async function browseCert(): Promise<void> {
-    if (hasTauri) {
-      const p = await browseFile(m.manager_browse_cert_title());
-      if (p) certFile = p;
-    } else {
-      certFile = '/home/jane/certs/client.p12';
-    }
+    const p = await browseFile(m.manager_browse_cert_title());
+    if (p) certFile = p;
   }
   async function browseKey(): Promise<void> {
-    if (hasTauri) {
-      const p = await browseFile(m.manager_browse_key_title());
-      if (p) keyFile = p;
-    } else {
-      keyFile = '/home/jane/certs/client-key.pem';
-    }
+    const p = await browseFile(m.manager_browse_key_title());
+    if (p) keyFile = p;
   }
 </script>
 

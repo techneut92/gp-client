@@ -5,7 +5,7 @@
   import { onMount } from 'svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { m } from '../paraglide/messages.js';
-  import { hasTauri, vaultStatus, type Identity } from '../lib/api';
+  import { vaultStatus, type Identity } from '../lib/api';
   import { mountShim } from '../lib/shim';
   import IdentityRail from './IdentityRail.svelte';
   import IdentityForm from './IdentityForm.svelte';
@@ -15,27 +15,20 @@
   document.title = m.manager_title();
   mountShim('settings');
 
-  // ───────── demo data ─────────
-  let identities = $state<Identity[]>([
-    { name: 'Acme Corp', portal: 'vpn.acme-corp.com', auth_method: 0, as_gateway: true, module_path: '/usr/lib/opensc-pkcs11.so', cert_id: '01', cert_manufacturer: 'Yubico' },
-    { name: 'Personal Lab', portal: 'lab.example.net', auth_method: 3, as_gateway: false, username: 'jane' },
-  ]);
+  let identities = $state<Identity[]>([]);
   let editing = $state<string | null>(null);
   let locked = $state(false);
   let formRef = $state<ReturnType<typeof IdentityForm> | undefined>(undefined);
 
   function closeWindow(): void {
-    if (hasTauri) void getCurrentWindow().close();
-    else window.close();
+    void getCurrentWindow().close();
   }
 
   async function init(): Promise<void> {
-    if (hasTauri) {
-      const vs = await vaultStatus();
-      if (!vs.unlocked) {
-        locked = true;
-        return;
-      }
+    const vs = await vaultStatus();
+    if (!vs.unlocked) {
+      locked = true;
+      return;
     }
     await formRef?.initForm();
   }

@@ -6,13 +6,14 @@
   import { onMount } from 'svelte';
   import { m } from '../paraglide/messages.js';
   import * as api from '../lib/api';
-  import { hasTauri, type CertInfo, type Identity, type UpdateInfo, type VpnState } from '../lib/api';
+  import { type CertInfo, type Identity, type UpdateInfo, type VpnState } from '../lib/api';
   import { mountShim } from '../lib/shim';
   import type { Banner, Chip, LogLine, View } from './types';
   import Header from './Header.svelte';
   import SetupView from './SetupView.svelte';
   import LockView from './LockView.svelte';
   import BackendMissing from './BackendMissing.svelte';
+  import ImportView from './ImportView.svelte';
   import UpdateBanner from './UpdateBanner.svelte';
   import StatusHero from './StatusHero.svelte';
   import IdentityPicker from './IdentityPicker.svelte';
@@ -39,31 +40,25 @@
     }
   }
 
-  // ───────── demo data (replaced by backend when on Tauri) ─────────
-  let identities = $state<Identity[]>([
-    { name: 'Acme Corp', portal: 'vpn.acme-corp.com', auth_method: 0, as_gateway: true, module_path: '/usr/lib/opensc-pkcs11.so', cert_id: '01', cert_manufacturer: 'Yubico' },
-    { name: 'Personal Lab', portal: 'lab.example.net', auth_method: 3, as_gateway: false, username: 'jane' },
-  ]);
-  const DEMO_CERTS: CertInfo[] = [
-    { uri: 'pkcs11:id=%01;manufacturer=Yubico', display: 'Jane Doe — YubiKey 5C', id: '01', manufacturer: 'Yubico', slot: 'Slot 01', expiry: '2026-07-10' },
-    { uri: 'pkcs11:id=%02;manufacturer=Yubico', display: 'Jane Doe — PIV Authentication', id: '02', manufacturer: 'Yubico', slot: 'Slot 02', expiry: '2027-04-12' },
-  ];
-  let selected = $state<string | null>('Acme Corp');
+  let identities = $state<Identity[]>([]);
+  let selected = $state<string | null>(null);
   let active = false;
   let lastKind = $state(0);
 
   // ───────── window controls ─────────
   function openSettings(): void {
-    if (hasTauri) void api.openSettings();
-    else window.open('settings.html', 'gp-settings', 'width=560,height=620');
+    void api.openSettings();
   }
   function openManager(): void {
-    if (hasTauri) void api.openManager();
-    else window.open('manager.html', 'gp-manager', 'width=720,height=620');
+    void api.openManager();
   }
 
   // ───────── view switching ─────────
   let view = $state<View>('');
+
+  // ───────── gpgui migration screen ─────────
+  let importBusy = $state(false);
+  let importError = $state('');
 
   // ───────── backend presence + version banners ─────────
   let sysInfo = $state<api.SystemInfo | null>(null);
@@ -101,7 +96,6 @@
     );
   }
   async function checkBackend(): Promise<boolean> {
-    if (!hasTauri) return true;
     try {
       const si = await api.systemInfo();
       sysInfo = si;
@@ -124,7 +118,6 @@
   let banner = $state<Banner | null>(null);
   let hasUpdate = $state(false);
   async function refreshBanners(): Promise<void> {
-    if (!hasTauri) return;
     // Check for a newer release on startup. This drives the up-arrow badge on
     // the settings gear, independent of the compatibility banner below.
     let u: UpdateInfo | null = null;
@@ -154,7 +147,7 @@
         sub: parts.join(' · '),
         kind: 'info',
         onClick: () => {
-          if (hasTauri) void api.openSettings('about');
+          void api.openSettings('about');
         },
       };
       return;
@@ -232,14 +225,12 @@
     // smart-card: read cert live so expiry reflects renewals
     if (id.auth_method === 0 && id.cert_id) {
       chips = [...head, row(m.main_certificate(), m.main_reading_token())];
-      let c: CertInfo | null | undefined = DEMO_CERTS.find((x) => x.id === id.cert_id);
-      if (hasTauri) {
-        try {
-          const list = await api.scanCerts(id.module_path);
-          c = list.find((x) => x.id === id.cert_id && x.manufacturer === id.cert_manufacturer);
-        } catch {
-          c = null;
-        }
+      let c: CertInfo | null | undefined;
+      try {
+        const list = await api.scanCerts(id.module_path);
+        c = list.find((x) => x.id === id.cert_id && x.manufacturer === id.cert_manufacturer);
+      } catch {
+        c = null;
       }
       if (selected !== id.name) return;
       let cm: Chip[];
@@ -343,76 +334,28 @@
   }
 
   // ───────── connect flow ─────────
-  let timer: ReturnType<typeof setInterval> | null = null;
-  let demoTimers: ReturnType<typeof setTimeout>[] = [];
   async function connect(): Promise<void> {
     const id = identities.find((i) => i.name === selected);
     if (!id) {
       footLog = { msg: m.main_add_identity_first(), err: true };
       return;
     }
-    if (hasTauri) {
-      try {
-        await api.connect(id.name, '');
-      } catch (e) {
-        render({ kind: 3, status: m.status_error(), log: 'Error: ' + String(e) });
-      }
-      return;
+    try {
+      await api.connect(id.name, '');
+    } catch (e) {
+      render({ kind: 3, status: m.status_error(), log: 'Error: ' + String(e) });
     }
-    render({ kind: 1, status: m.status_connecting(), log: m.main_demo_authenticating({ portal: id.portal ?? '' }) });
-    demoTimers.push(
-      setTimeout(() => {
-        render({ kind: 1, status: m.status_connecting(), log: m.main_demo_negotiating() });
-        demoTimers.push(
-          setTimeout(() => {
-            const t0 = Date.now();
-            const fmt = (): string => {
-              const d = Math.floor((Date.now() - t0) / 1000);
-              return [d / 3600, (d % 3600) / 60, d % 60].map((n) => String(Math.floor(n)).padStart(2, '0')).join(':');
-            };
-            const detail: VpnState = {
-              kind: 2,
-              status: m.status_connected(),
-              active: true,
-              portal: id.portal ?? '',
-              gateway: id.as_gateway ? (id.portal ?? '') : 'gw1.' + (id.portal ?? '').replace(/^[^.]+\./, ''),
-              ip: '10.42.7.' + (20 + Math.floor(Math.random() * 200)),
-              iface: 'gpd0',
-              expires: m.main_demo_expires(),
-              elapsed: fmt(),
-            };
-            render(detail);
-            timer = setInterval(() => {
-              detail.elapsed = fmt();
-              if (active && detail.elapsed !== undefined) statusSubText = m.main_sub_connected({ elapsed: detail.elapsed });
-            }, 1000);
-          }, 1100)
-        );
-      }, 1300)
-    );
   }
   function disconnect(): void {
-    demoTimers.forEach(clearTimeout);
-    demoTimers = [];
-    if (timer !== null) {
-      clearInterval(timer);
-      timer = null;
-    }
-    if (hasTauri) {
-      void api.disconnect();
-      return;
-    }
-    render({ kind: 0, status: m.status_disconnected(), active: false, log: '' });
+    void api.disconnect();
   }
 
   // ───────── vault ─────────
   async function unlocked(): Promise<void> {
-    if (hasTauri) {
-      try {
-        identities = await api.listIdentities();
-      } catch {
-        identities = [];
-      }
+    try {
+      identities = await api.listIdentities();
+    } catch {
+      identities = [];
     }
     if (!identities.find((i) => i.name === selected)) selected = identities[0]?.name ?? null;
     view = 'unlocked';
@@ -430,26 +373,22 @@
   let lockLog = $state<LogLine>({ msg: '', err: false });
 
   async function doSetup(): Promise<void> {
-    if (hasTauri) {
-      try {
-        // Enable remember-unlock first so set_master_pin stores the PIN.
-        if (autoUnlock && keyringAvailable) await api.setRememberUnlock(true);
-        await api.setMasterPin(newMasterPin);
-      } catch (e) {
-        setupLog = { msg: String(e), err: true };
-        return;
-      }
+    try {
+      // Enable remember-unlock first so set_master_pin stores the PIN.
+      if (autoUnlock && keyringAvailable) await api.setRememberUnlock(true);
+      await api.setMasterPin(newMasterPin);
+    } catch (e) {
+      setupLog = { msg: String(e), err: true };
+      return;
     }
     await unlocked();
   }
   async function doUnlock(): Promise<void> {
-    if (hasTauri) {
-      try {
-        await api.unlockVault(masterPin);
-      } catch (e) {
-        lockLog = { msg: String(e), err: true };
-        return;
-      }
+    try {
+      await api.unlockVault(masterPin);
+    } catch (e) {
+      lockLog = { msg: String(e), err: true };
+      return;
     }
     await unlocked();
   }
@@ -457,12 +396,10 @@
   // forgotten-PIN reset (deletes identities)
   let resetOpen = $state(false);
   async function resetConfirm(): Promise<void> {
-    if (hasTauri) {
-      try {
-        await api.resetVault();
-      } catch {
-        /* ignore */
-      }
+    try {
+      await api.resetVault();
+    } catch {
+      /* ignore */
     }
     identities = [];
     selected = null;
@@ -485,28 +422,53 @@
     } else if (!vs.unlocked) view = 'lock';
     else await unlocked();
   }
+  // The normal startup path, once any gpgui migration is resolved: backend check,
+  // then boot the vault and wire up the live listeners.
+  async function continueStartup(): Promise<void> {
+    if (!(await checkBackend())) return; // backend missing → install screen, stop here
+    await bootVault();
+    render(await api.getState());
+    await api.onVpnState((s) => {
+      render(s);
+    });
+    await api.onIdentitiesChanged(async () => {
+      try {
+        identities = await api.listIdentities();
+      } catch {
+        /* keep current list */
+      }
+      renderIdentityUI();
+    });
+    void refreshBanners(); // version-mismatch / update-available banner (non-blocking)
+  }
+
+  // Import screen: pull everything from gpgui and remove the old app, then carry
+  // on. On failure the old app is left untouched (see import.rs) and we show why.
+  async function doImport(): Promise<void> {
+    importBusy = true;
+    importError = '';
+    try {
+      await api.importFromGpgui();
+    } catch (e) {
+      importError = String(e);
+      importBusy = false;
+      return;
+    }
+    importBusy = false;
+    await continueStartup();
+  }
+  async function skipImport(): Promise<void> {
+    await continueStartup();
+  }
+
   onMount(() => {
     void (async () => {
-      if (hasTauri) {
-        if (!(await checkBackend())) return; // backend missing → install screen, stop here
-        await bootVault();
-        render(await api.getState());
-        await api.onVpnState((s) => {
-          render(s);
-        });
-        await api.onIdentitiesChanged(async () => {
-          try {
-            identities = await api.listIdentities();
-          } catch {
-            /* keep current list */
-          }
-          renderIdentityUI();
-        });
-        void refreshBanners(); // version-mismatch / update-available banner (non-blocking)
-      } else {
-        // demo: start locked to show the vault unlock, any PIN unlocks
-        view = 'lock';
+      // Fresh install with a predecessor gpgui → offer to import first.
+      if (await api.importAvailable()) {
+        view = 'import';
+        return;
       }
+      await continueStartup();
     })();
   });
 </script>
@@ -514,6 +476,9 @@
 <Header {view} {pillText} {stateColor} {dotLive} {hasUpdate} onOpenManager={openManager} onOpenSettings={openSettings} />
 
 <main>
+  <!-- ============ IMPORT (migrate from gpgui) ============ -->
+  <ImportView show={view === 'import'} busy={importBusy} error={importError} onImport={() => void doImport()} onSkip={() => void skipImport()} />
+
   <!-- ============ SETUP (first run) ============ -->
   <SetupView show={view === 'setup'} bind:newMasterPin {setupLog} {keyringAvailable} bind:autoUnlock onSetup={() => void doSetup()} />
 

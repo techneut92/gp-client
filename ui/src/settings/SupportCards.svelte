@@ -1,7 +1,7 @@
 <script lang="ts">
   // Support section: Ko-fi / Revolut / Ethereum donation cards.
   import { m } from '../paraglide/messages.js';
-  import { hasTauri, openUrl } from '../lib/api';
+  import { openUrl } from '../lib/api';
   import revolutQrUrl from '../assets/revolut-qr.png';
   import ethQrUrl from '../assets/eth-qr.png';
 
@@ -62,7 +62,7 @@
         <div class="kofi-sub">{m.settings_kofi_sub()}</div>
       </div>
     </div>
-    <a class="kofi-btn" id="kofiBtn" href={KOFI_URL} target="_blank" rel="noreferrer" onclick={(e) => { if (hasTauri) { e.preventDefault(); void openUrl(KOFI_URL); } }}>
+    <a class="kofi-btn" id="kofiBtn" href={KOFI_URL} target="_blank" rel="noreferrer" onclick={(e) => { e.preventDefault(); void openUrl(KOFI_URL); }}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 5h12a4 4 0 0 1 0 8h-1.2A6 6 0 0 1 10 18H8a4 4 0 0 1-4-4V5z" fill="#fff"/><circle cx="9" cy="10" r="2.1" fill="#FF5E5B"/></svg>
       <span>{m.settings_kofi_btn()}</span>
     </a>
@@ -81,7 +81,7 @@
       <img class="revolut-qr" src={revolutQrUrl} width="150" height="150" alt={m.settings_revolut_qr_alt()} />
       <div class="revolut-qr-cap">{m.settings_revolut_qr_cap()}</div>
     </div>
-    <a class="revolut-btn" id="revolutBtn" href={REVOLUT_URL} target="_blank" rel="noreferrer" onclick={(e) => { if (hasTauri) { e.preventDefault(); void openUrl(REVOLUT_URL); } }}>
+    <a class="revolut-btn" id="revolutBtn" href={REVOLUT_URL} target="_blank" rel="noreferrer" onclick={(e) => { e.preventDefault(); void openUrl(REVOLUT_URL); }}>
       <svg width="18" height="18" viewBox="0 0 24 24"><text x="12" y="17.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="800" fill="#fff">R</text></svg>
       <span>{m.settings_revolut_btn()}</span>
     </a>

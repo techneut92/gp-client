@@ -2,7 +2,7 @@
   // Main-window header: brand, status pill and window controls.
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { m } from '../paraglide/messages.js';
-  import { hasTauri, openUrl } from '../lib/api';
+  import { openUrl } from '../lib/api';
   import type { View } from './types';
 
   interface Props {
@@ -20,16 +20,14 @@
   const KOFI_URL = 'https://ko-fi.com/techneut92?amount=2.50#checkoutModal';
 
   function winMin(): void {
-    if (hasTauri) void getCurrentWindow().minimize();
+    void getCurrentWindow().minimize();
   }
   function winClose(): void {
-    if (hasTauri) void getCurrentWindow().close();
+    void getCurrentWindow().close();
   }
   function onKofi(e: MouseEvent): void {
-    if (hasTauri) {
-      e.preventDefault();
-      void openUrl(KOFI_URL);
-    }
+    e.preventDefault();
+    void openUrl(KOFI_URL);
   }
 </script>
 

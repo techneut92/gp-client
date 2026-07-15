@@ -2,6 +2,7 @@
   // Backend-missing view: guided install (pkexec) or manual terminal steps.
   import { m } from '../paraglide/messages.js';
   import Dropdown from '../lib/Dropdown.svelte';
+  import LanguagePicker from '../lib/LanguagePicker.svelte';
   import type { InstallOption } from '../lib/api';
 
   interface Props {
@@ -32,6 +33,8 @@
 
 <div class="view" id="backendView" class:show={show}>
   <div class="svc-wrap">
+    <!-- Language picker up top so it's reachable before the backend is installed. -->
+    <div class="svc-lang"><LanguagePicker /></div>
     <div class="svc-hero">
       <div class="svc-badge">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.6" /><rect x="3" y="14" width="18" height="6" rx="1.6" /><path d="M7 7h.01M7 17h.01" /><path d="M11 7h6M11 17h6" /></svg>

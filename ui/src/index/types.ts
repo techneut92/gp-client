@@ -1,6 +1,6 @@
 // UI-local types shared between the main-window components.
 
-export type View = '' | 'setup' | 'lock' | 'unlocked' | 'backend';
+export type View = '' | 'setup' | 'lock' | 'unlocked' | 'backend' | 'import';
 
 export interface Chip {
   k: string;

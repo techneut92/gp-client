@@ -2,7 +2,7 @@
   // About section: versions, update status and the unified "Update all" flow
   // (backend first, then the app, narrated, with restart/reboot offer).
   import { m } from '../paraglide/messages.js';
-  import { checkUpdate, hasTauri, installBackend, openExt, restart, runUpdate, systemInfo, type UpdateInfo } from '../lib/api';
+  import { checkUpdate, installBackend, openExt, restart, runUpdate, systemInfo, type UpdateInfo } from '../lib/api';
 
   interface Props {
     hidden: boolean;
@@ -79,10 +79,6 @@
   ]);
 
   export async function loadAbout(): Promise<void> {
-    if (!hasTauri) {
-      aboutVer = m.settings_dev_build();
-      return;
-    }
     try {
       const s = await systemInfo();
       aboutVer = 'v' + s.guiVersion;
@@ -154,10 +150,6 @@
   }
 
   async function onUpdateAll(): Promise<void> {
-    if (!hasTauri) {
-      openExt(updateUrl);
-      return;
-    }
     updating = true;
     restartVisible = false;
     // Run a step while narrating the phase with a live elapsed counter.
@@ -235,10 +227,6 @@
   }
 
   async function onCheckUpdate(): Promise<void> {
-    if (!hasTauri) {
-      openExt(updateUrl);
-      return;
-    }
     // Give the click visible feedback: spin the rows while checking, then leave
     // a short-lived confirmation so it's clear the check actually ran.
     clearTimeout(checkMsgTimer);

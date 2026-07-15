@@ -3,7 +3,7 @@
   // method-specific blocks, gateway switch and save/delete actions.
   import { m } from '../paraglide/messages.js';
   import Dropdown from '../lib/Dropdown.svelte';
-  import { deleteIdentity, availableModules, getConfig, hasTauri, listIdentities, probeAuth, saveIdentity, scanCerts, type CertInfo, type Identity, type ProbeResult } from '../lib/api';
+  import { deleteIdentity, availableModules, getConfig, listIdentities, probeAuth, saveIdentity, scanCerts, type CertInfo, type Identity, type ProbeResult } from '../lib/api';
   import CertPicker from './CertPicker.svelte';
   import AuthFields from './AuthFields.svelte';
 
@@ -19,13 +19,6 @@
   }
 
   let { identities = $bindable(), editing = $bindable() }: Props = $props();
-
-  // ───────── demo data ─────────
-  const DEMO_CERTS: CertInfo[] = [
-    { uri: 'pkcs11:id=%01;manufacturer=Yubico', display: 'Jane Doe — YubiKey 5C', id: '01', manufacturer: 'Yubico', slot: 'Slot 01', expiry: '2026-07-10' },
-    { uri: 'pkcs11:id=%02;manufacturer=Yubico', display: 'Jane Doe — PIV Authentication', id: '02', manufacturer: 'Yubico', slot: 'Slot 02', expiry: '2027-04-12' },
-  ];
-  const DEMO_MODULES: string[] = ['/usr/lib/opensc-pkcs11.so', '/usr/lib/pkcs11/p11-kit-proxy.so'];
 
   let certs = $state<CertInfo[]>([]);
   let asGateway = $state(true);
@@ -57,8 +50,8 @@
   function moduleOption(p: string): Option {
     return { value: p, label: p.split('/').pop() ?? p, sub: p };
   }
-  let moduleOptions = $state<Option[]>(DEMO_MODULES.map(moduleOption));
-  let moduleValue = $state(DEMO_MODULES[0] ?? '');
+  let moduleOptions = $state<Option[]>([]);
+  let moduleValue = $state('');
 
   let certValue = $state('');
 
@@ -78,14 +71,10 @@
   }
 
   async function rescanCerts(selId?: string, selManu?: string): Promise<void> {
-    if (hasTauri) {
-      try {
-        certs = await scanCerts(moduleValue);
-      } catch {
-        certs = [];
-      }
-    } else {
-      certs = DEMO_CERTS.slice();
+    try {
+      certs = await scanCerts(moduleValue);
+    } catch {
+      certs = [];
     }
     let pick: CertInfo | undefined = certs[0];
     if (selId) {
@@ -104,28 +93,21 @@
   async function detect(): Promise<void> {
     hint = m.manager_detecting();
     let res: ProbeResult;
-    if (hasTauri) {
-      const cert = certs.find((c) => c.uri === certValue);
-      try {
-        res = await probeAuth({
-          portal: portal.trim(),
-          certKind: currentCertKind(),
-          certUri: cert ? cert.uri : '',
-          pin,
-          certFile,
-          keyFile,
-          keyPassword,
-          modulePath: moduleValue,
-        });
-      } catch (e) {
-        hint = m.manager_probe_failed({ error: String(e) });
-        return;
-      }
-    } else {
-      await new Promise((r) => setTimeout(r, 700));
-      res = portal.includes('lab')
-        ? { kind: 'standard', usernameLabel: 'Username', passwordLabel: 'Password' }
-        : { kind: 'cert' };
+    const cert = certs.find((c) => c.uri === certValue);
+    try {
+      res = await probeAuth({
+        portal: portal.trim(),
+        certKind: currentCertKind(),
+        certUri: cert ? cert.uri : '',
+        pin,
+        certFile,
+        keyFile,
+        keyPassword,
+        modulePath: moduleValue,
+      });
+    } catch (e) {
+      hint = m.manager_probe_failed({ error: String(e) });
+      return;
     }
     if (res.kind === 'error') {
       hint = m.manager_error({ error: String(res.message ?? '') });
@@ -203,17 +185,11 @@
       key_file: keyFile,
       key_password: keyPassword,
     };
-    if (hasTauri) {
-      try {
-        await saveIdentity(id);
-      } catch (e) {
-        setLog(m.manager_error({ error: String(e) }), true);
-        return;
-      }
-    } else {
-      const i = identities.findIndex((x) => x.name === nm);
-      if (i >= 0) identities[i] = id;
-      else identities.push(id);
+    try {
+      await saveIdentity(id);
+    } catch (e) {
+      setLog(m.manager_error({ error: String(e) }), true);
+      return;
     }
     editing = nm;
     await load();
@@ -224,39 +200,31 @@
       blankForm();
       return;
     }
-    if (hasTauri) {
-      try {
-        await deleteIdentity(editing);
-      } catch {
-        // ignore
-      }
-    } else {
-      identities = identities.filter((x) => x.name !== editing);
+    try {
+      await deleteIdentity(editing);
+    } catch {
+      // ignore
     }
     await load();
     blankForm();
   }
 
   async function load(): Promise<void> {
-    if (hasTauri) {
-      try {
-        identities = await listIdentities();
-      } catch {
-        return;
-      }
+    try {
+      identities = await listIdentities();
+    } catch {
+      return;
     }
   }
 
   export async function initForm(): Promise<void> {
-    if (hasTauri) {
-      try {
-        const mods = await availableModules();
-        if (mods.length) moduleOptions = mods.map(moduleOption);
-        const cfg = await getConfig();
-        moduleValue = cfg.module_path && mods.includes(cfg.module_path) ? cfg.module_path : (mods[0] ?? '');
-      } catch {
-        // ignore
-      }
+    try {
+      const mods = await availableModules();
+      if (mods.length) moduleOptions = mods.map(moduleOption);
+      const cfg = await getConfig();
+      moduleValue = cfg.module_path && mods.includes(cfg.module_path) ? cfg.module_path : (mods[0] ?? '');
+    } catch {
+      // ignore
     }
     await load();
     const first = identities[0];
