@@ -18,7 +18,7 @@ backend over [`gp-protocol`](https://github.com/techneut92/gp-protocol).
 > compatible client and is not affiliated with or endorsed by Palo Alto Networks.
 
 <p align="center">
-  <img width="440" src="docs/screenshots/connect.png" alt="GP Client — connect with a smart-card identity">
+  <img width="440" src="docs/screenshots/main_disconnected.png" alt="GP Client — connect with a smart-card identity">
 </p>
 <p align="center"><em>Connect with a smart-card (PKCS#11 / YubiKey PIV) identity.</em></p>
 
@@ -26,17 +26,17 @@ backend over [`gp-protocol`](https://github.com/techneut92/gp-protocol).
 <summary><b>More screenshots</b></summary>
 
 <p align="center">
-  <img width="320" src="docs/screenshots/identity_manager.png" alt="Identity manager — PKCS#11 module + certificate">
-  <img width="320" src="docs/screenshots/settings.png" alt="Settings">
+  <img width="320" src="docs/screenshots/identities.png" alt="Identity manager — PKCS#11 module + certificate">
+  <img width="320" src="docs/screenshots/main_connected.png" alt="Connected — traffic protected over the VPN tunnel">
 </p>
-<p align="center"><em>Identity manager (PKCS#11 / YubiKey) · Settings.</em></p>
+<p align="center"><em>Identity manager (PKCS#11 / YubiKey) · Connected and protected.</em></p>
 
 <p align="center">
   <img width="240" src="docs/screenshots/vault.png" alt="Encrypted vault — set a master PIN">
-  <img width="240" src="docs/screenshots/backend_required.png" alt="Guided backend install">
-  <img width="240" src="docs/screenshots/import.png" alt="Import from the previous app">
+  <img width="240" src="docs/screenshots/settings_general.png" alt="General settings — startup, tray, language">
+  <img width="240" src="docs/screenshots/settings_about.png" alt="About — app + backend version and update status">
 </p>
-<p align="center"><em>Encrypted vault · guided backend install · one-click import from the old app.</em></p>
+<p align="center"><em>Encrypted vault · settings · About (app + backend status).</em></p>
 
 </details>
 
