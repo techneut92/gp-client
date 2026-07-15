@@ -381,7 +381,7 @@ body.settings { background: var(--bg-grad); }
 .upd-stat { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; }
 .upd-pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
 .upd-pill.avail { color: #cfe4ff; background: rgba(84,168,255,.14); }
-.upd-pill.ok { color: var(--muted); background: transparent; padding: 0; }
+.upd-pill.ok { color: #86d5ab; background: rgba(52,211,153,.14); }
 .upd-pill.run { color: #fbbf24; background: transparent; padding: 0; }
 .upd-pill.muted { color: var(--muted); background: transparent; padding: 0; }
 .upd-spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgba(251,191,36,.25); border-top-color: #fbbf24; animation: spin .7s linear infinite; }

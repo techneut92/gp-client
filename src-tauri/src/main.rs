@@ -416,26 +416,39 @@ fn predecessor_app_installed() -> bool {
   import::predecessor_installed()
 }
 
+/// Refresh the in-memory vault + config from the just-imported files on disk, so
+/// the imported vault is recognised (unlock screen, not a fresh setup) and the
+/// imported settings (incl. auto-unlock) take effect immediately.
+fn reload_after_import(state: &AppState) {
+  let vault_path = config::vault_path().unwrap_or_else(|| std::path::PathBuf::from("identities.enc"));
+  *state.vault.lock().unwrap() = Vault::load(vault_path);
+  *state.cfg.lock().unwrap() = Config::load();
+}
+
 /// Import everything from gpgui (identities + all settings, incl. auto-unlock),
 /// then remove the old app and its data. The old app is only removed if the
 /// import succeeded first.
 #[tauri::command]
-async fn import_from_gpgui() -> Result<(), String> {
+async fn import_from_gpgui(state: State<'_, AppState>) -> Result<(), String> {
   tauri::async_runtime::spawn_blocking(|| -> Result<(), String> {
     import::import_now()?;
     import::remove_predecessor()
   })
   .await
-  .map_err(|e| e.to_string())?
+  .map_err(|e| e.to_string())??;
+  reload_after_import(&state);
+  Ok(())
 }
 
 /// Import everything from gpgui without removing anything — used when the old app
 /// is already gone and only its data remains (nothing to uninstall).
 #[tauri::command]
-async fn import_only() -> Result<(), String> {
+async fn import_only(state: State<'_, AppState>) -> Result<(), String> {
   tauri::async_runtime::spawn_blocking(import::import_now)
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())??;
+  reload_after_import(&state);
+  Ok(())
 }
 
 /// Update action. On Flatpak: download the new `.flatpak` from the release and
