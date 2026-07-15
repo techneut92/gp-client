@@ -62,7 +62,7 @@ backend over [`gp-protocol`](https://github.com/techneut92/gp-protocol).
   notifications; optional autostart and start-minimized.
 - **Fast, leak-proof reconnect** on resume from sleep — the tunnel is never torn
   down, so nothing escapes it while the network comes back.
-- **Multi-language UI** — English, Dutch (Nederlands) and Frisian (Frysk).
+- **Multi-language UI** — English, Dutch, Frisian, with more on the way.
 - **Update checks** for both the app and the backend.
 
 ## Architecture

@@ -457,7 +457,18 @@
     importBusy = false;
     await continueStartup();
   }
+  // Skip = don't import, but still remove the old app + its data (start fresh).
   async function skipImport(): Promise<void> {
+    importBusy = true;
+    importError = '';
+    try {
+      await api.removePredecessor();
+    } catch (e) {
+      importError = String(e);
+      importBusy = false;
+      return;
+    }
+    importBusy = false;
     await continueStartup();
   }
 

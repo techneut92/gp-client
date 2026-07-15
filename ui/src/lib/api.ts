@@ -227,6 +227,12 @@ export function importFromGpgui(): Promise<void> {
   return invoke<void>('import_from_gpgui');
 }
 
+/** Remove the predecessor gpgui and its data WITHOUT importing — the "skip" path
+ *  on the migration screen. */
+export function removePredecessor(): Promise<void> {
+  return invoke<void>('remove_predecessor');
+}
+
 export function setRememberUnlock(enabled: boolean): Promise<void> {
   return invoke<void>('set_remember_unlock', { enabled });
 }

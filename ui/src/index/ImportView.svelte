@@ -16,8 +16,9 @@
 
 <div class="view center" id="importView" class:show={show}>
   <div class="stack vault">
-    <!-- Language picker up top so a migrating user can read this in their language. -->
-    <LanguagePicker />
+    <!-- Language picker up top so a migrating user can read this in their language;
+         the wrapper adds breathing room so it isn't crammed onto the badge. -->
+    <div style="width:100%;margin-bottom:16px;"><LanguagePicker /></div>
     <div class="vault-badge">
       <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" /><path d="M8 11l4 4 4-4" /><path d="M5 21h14" /></svg>
     </div>
