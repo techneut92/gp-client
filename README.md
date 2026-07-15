@@ -17,13 +17,15 @@ D-Bus system service.
 
 ## Development
 
-The web frontend lives in `ui/`; the Rust/Tauri app is in `src-tauri/`. Run the
-frontend tooling from `ui/` (the Tauri CLI finds `src-tauri/` from there):
+The web frontend lives in `ui/`; the Rust/Tauri app is in `src-tauri/`. Install
+frontend deps with pnpm in `ui/`, then run the Tauri CLI **from the repo root**
+(it locates `src-tauri/` as a subfolder; its `beforeBuildCommand` builds the
+frontend via `pnpm -C ui build`):
 
 ```bash
 pnpm -C ui install
-pnpm -C ui tauri dev      # run against a local gpservice
-pnpm -C ui tauri build
+ui/node_modules/.bin/tauri dev      # run against a local gpservice
+ui/node_modules/.bin/tauri build
 ```
 
 The frontend is Svelte; the application layer (tray, D-Bus transport, vault,

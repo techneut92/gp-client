@@ -16,6 +16,8 @@ name: Release
 on:
   push:
     tags: ['v*']
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -77,11 +79,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build bundles (.deb, .rpm, AppImage)
-        working-directory: ui
-        # `tauri build` (run from ui/, which finds ../src-tauri) runs `pnpm build`
-        # (beforeBuildCommand) and compiles in production mode (custom-protocol),
-        # so the embedded frontend is used.
-        run: pnpm tauri build --bundles deb,rpm,appimage
+        # `tauri build` must run from the repo root — it locates src-tauri/ as a
+        # subfolder (it does not search parents). It runs `pnpm -C ui build`
+        # (beforeBuildCommand) for the frontend, then compiles in production mode
+        # (custom-protocol) so the embedded frontend is used.
+        run: ui/node_modules/.bin/tauri build --bundles deb,rpm,appimage
 
       - name: Collect artifacts
         run: |
