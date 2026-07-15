@@ -1,7 +1,9 @@
 # GP Client
 
 [![Release](https://img.shields.io/github/v/release/techneut92/gp-client?label=release&color=brightgreen)](https://github.com/techneut92/gp-client/releases/latest)
+[![Copr build status](https://copr.fedorainfracloud.org/coprs/techneut92/gp-client/package/gp-client/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/techneut92/gp-client/package/gp-client/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](./LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/techneut92/gp-client/total?label=downloads&color=blue)](https://github.com/techneut92/gp-client/releases)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/techneut92)
 
 A GlobalProtect-compatible VPN client for Linux, with a modern **Svelte + Tauri**
