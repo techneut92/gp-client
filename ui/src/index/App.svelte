@@ -450,9 +450,9 @@
     importBusy = true;
     importError = '';
     try {
-      // With the old app still installed, importing also removes it; if only its
-      // data remains, keep it (nothing to uninstall).
-      await (predecessorInstalled ? api.importFromGpgui() : api.importOnly());
+      // Always import, then remove the old gpgui — its app if still installed,
+      // otherwise just its leftover data (remove_predecessor handles both).
+      await api.importFromGpgui();
     } catch (e) {
       importError = String(e);
       importBusy = false;

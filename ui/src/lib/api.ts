@@ -233,12 +233,6 @@ export function predecessorAppInstalled(): Promise<boolean> {
   return invoke<boolean>('predecessor_app_installed');
 }
 
-/** Import from gpgui without removing anything — used when the old app is already
- *  gone and only its data remains. */
-export function importOnly(): Promise<void> {
-  return invoke<void>('import_only');
-}
-
 /** Remove the predecessor gpgui and its data WITHOUT importing — the "remove old
  *  app / start fresh" path on the migration screen. */
 export function removePredecessor(): Promise<void> {

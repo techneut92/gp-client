@@ -440,17 +440,6 @@ async fn import_from_gpgui(state: State<'_, AppState>) -> Result<(), String> {
   Ok(())
 }
 
-/// Import everything from gpgui without removing anything — used when the old app
-/// is already gone and only its data remains (nothing to uninstall).
-#[tauri::command]
-async fn import_only(state: State<'_, AppState>) -> Result<(), String> {
-  tauri::async_runtime::spawn_blocking(import::import_now)
-    .await
-    .map_err(|e| e.to_string())??;
-  reload_after_import(&state);
-  Ok(())
-}
-
 /// Update action. On Flatpak: download the new `.flatpak` from the release and
 /// reinstall it (no hosted/Flathub remote yet, so `flatpak update` can't pull
 /// it). On native: open the release to grab the new packages.
@@ -893,7 +882,6 @@ fn main() {
       import_available,
       predecessor_app_installed,
       import_from_gpgui,
-      import_only,
       open_settings,
       save_settings,
       probe_auth,
