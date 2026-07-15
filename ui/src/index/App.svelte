@@ -59,6 +59,8 @@
   // ───────── gpgui migration screen ─────────
   let importBusy = $state(false);
   let importError = $state('');
+  // Is the old gpgui *app* still installed (vs. only its leftover data)?
+  let predecessorInstalled = $state(false);
 
   // ───────── backend presence + version banners ─────────
   let sysInfo = $state<api.SystemInfo | null>(null);
@@ -448,7 +450,9 @@
     importBusy = true;
     importError = '';
     try {
-      await api.importFromGpgui();
+      // With the old app still installed, importing also removes it; if only its
+      // data remains, keep it (nothing to uninstall).
+      await (predecessorInstalled ? api.importFromGpgui() : api.importOnly());
     } catch (e) {
       importError = String(e);
       importBusy = false;
@@ -457,7 +461,8 @@
     importBusy = false;
     await continueStartup();
   }
-  // Skip = don't import, but still remove the old app + its data (start fresh).
+  // "Remove old app — start fresh": don't import, but remove the old app + data
+  // (or clean the leftover data if the app is already gone).
   async function skipImport(): Promise<void> {
     importBusy = true;
     importError = '';
@@ -476,6 +481,7 @@
     void (async () => {
       // Fresh install with a predecessor gpgui → offer to import first.
       if (await api.importAvailable()) {
+        predecessorInstalled = await api.predecessorAppInstalled();
         view = 'import';
         return;
       }
@@ -488,7 +494,7 @@
 
 <main>
   <!-- ============ IMPORT (migrate from gpgui) ============ -->
-  <ImportView show={view === 'import'} busy={importBusy} error={importError} onImport={() => void doImport()} onSkip={() => void skipImport()} />
+  <ImportView show={view === 'import'} appInstalled={predecessorInstalled} busy={importBusy} error={importError} onImport={() => void doImport()} onSkip={() => void skipImport()} />
 
   <!-- ============ SETUP (first run) ============ -->
   <SetupView show={view === 'setup'} bind:newMasterPin {setupLog} {keyringAvailable} bind:autoUnlock onSetup={() => void doSetup()} />

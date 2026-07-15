@@ -6,12 +6,14 @@
 
   interface Props {
     show: boolean;
+    /** Is the old gpgui *app* still installed (vs. only its leftover data)? */
+    appInstalled: boolean;
     busy: boolean;
     error: string;
     onImport: () => void;
     onSkip: () => void;
   }
-  let { show, busy, error, onImport, onSkip }: Props = $props();
+  let { show, appInstalled, busy, error, onImport, onSkip }: Props = $props();
 </script>
 
 <div class="view center" id="importView" class:show={show}>
@@ -26,8 +28,8 @@
     <p class="sub">{m.migrate_sub()}</p>
     {#if error}<p class="formlog err" id="importLog">{error}</p>{/if}
     <div class="actions" style="width:100%">
-      <button class="btn-action" id="importBtn" disabled={busy} onclick={onImport}>{busy ? m.migrate_importing() : m.migrate_import()}</button>
+      <button class="btn-action" id="importBtn" disabled={busy} onclick={onImport}>{busy ? m.migrate_importing() : appInstalled ? m.migrate_import() : m.migrate_import_keep()}</button>
     </div>
-    <button class="link" id="skipImportBtn" style="margin-top:8px;" disabled={busy} onclick={onSkip}>{m.migrate_skip()}</button>
+    <button class="link" id="skipImportBtn" style="margin-top:8px;" disabled={busy} onclick={onSkip}>{m.migrate_remove()}</button>
   </div>
 </div>

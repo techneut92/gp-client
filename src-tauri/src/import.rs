@@ -115,18 +115,33 @@ pub fn predecessor_installed() -> bool {
   }
 }
 
-/// Remove the predecessor gpgui and its data — called only after [`import_now`]
-/// succeeded. Under Flatpak we uninstall the app with `--delete-data`; natively
-/// we can't remove the distro package, so we at least wipe its data directories.
+/// gpgui's Flatpak per-app data directory (`~/.var/app/…gpgui`) on the host.
+fn flatpak_gpgui_data_dir() -> Option<String> {
+  let home = std::env::var_os("HOME")?;
+  Some(format!("{}/.var/app/{GPGUI_ID}", home.to_string_lossy()))
+}
+
+/// Remove the predecessor gpgui and its data. Under Flatpak we uninstall the app
+/// with `--delete-data` when it is still installed; if only its data lingers (the
+/// app was already uninstalled without `--delete-data`), we remove that leftover
+/// data directly on the host. Natively we can't remove the distro package, so we
+/// at least wipe its data directories.
 pub fn remove_predecessor() -> Result<(), String> {
   if crate::system::is_flatpak() {
-    let out = std::process::Command::new("flatpak-spawn")
-      .args(["--host", "flatpak", "uninstall", "-y", "--delete-data", GPGUI_ID])
-      .output()
-      .map_err(|e| format!("couldn't run the uninstaller: {e}"))?;
-    if !out.status.success() {
-      let stderr = String::from_utf8_lossy(&out.stderr);
-      return Err(stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("uninstall failed").trim().chars().take(160).collect());
+    if predecessor_installed() {
+      let out = std::process::Command::new("flatpak-spawn")
+        .args(["--host", "flatpak", "uninstall", "-y", "--delete-data", GPGUI_ID])
+        .output()
+        .map_err(|e| format!("couldn't run the uninstaller: {e}"))?;
+      if !out.status.success() {
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        return Err(stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("uninstall failed").trim().chars().take(160).collect());
+      }
+    } else if let Some(dir) = flatpak_gpgui_data_dir() {
+      // App already uninstalled but its per-app data lingers — remove it on the host.
+      let _ = std::process::Command::new("flatpak-spawn")
+        .args(["--host", "rm", "-rf", &dir])
+        .output();
     }
   } else {
     // Native: leave the package to the user's package manager, but remove the

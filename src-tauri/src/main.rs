@@ -408,6 +408,14 @@ fn import_available() -> bool {
   import::import_available()
 }
 
+/// Whether the predecessor gpgui *app* is still installed (vs. only its leftover
+/// data). Drives the import-screen copy: with the app present, importing also
+/// removes it; when only data lingers, the import keeps it (nothing to uninstall).
+#[tauri::command]
+fn predecessor_app_installed() -> bool {
+  import::predecessor_installed()
+}
+
 /// Import everything from gpgui (identities + all settings, incl. auto-unlock),
 /// then remove the old app and its data. The old app is only removed if the
 /// import succeeded first.
@@ -419,6 +427,15 @@ async fn import_from_gpgui() -> Result<(), String> {
   })
   .await
   .map_err(|e| e.to_string())?
+}
+
+/// Import everything from gpgui without removing anything — used when the old app
+/// is already gone and only its data remains (nothing to uninstall).
+#[tauri::command]
+async fn import_only() -> Result<(), String> {
+  tauri::async_runtime::spawn_blocking(import::import_now)
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Update action. On Flatpak: download the new `.flatpak` from the release and
@@ -861,7 +878,9 @@ fn main() {
       predecessor_removable,
       remove_predecessor,
       import_available,
+      predecessor_app_installed,
       import_from_gpgui,
+      import_only,
       open_settings,
       save_settings,
       probe_auth,
