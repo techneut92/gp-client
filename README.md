@@ -10,12 +10,20 @@ It talks to the privileged backend (`gpservice`) over the
 [`gp-protocol`](https://github.com/techneut92/gp-protocol) wire contract via the
 D-Bus system service.
 
+> “GlobalProtect” is a trademark of Palo Alto Networks, Inc. This is an
+> independent, community project and is **not** affiliated with, endorsed by, or
+> sponsored by Palo Alto Networks. The name is used only to describe
+> compatibility.
+
 ## Development
 
+The web frontend lives in `ui/`; the Rust/Tauri app is in `src-tauri/`. Run the
+frontend tooling from `ui/` (the Tauri CLI finds `src-tauri/` from there):
+
 ```bash
-pnpm install
-pnpm tauri dev      # run against a local gpservice
-pnpm tauri build
+pnpm -C ui install
+pnpm -C ui tauri dev      # run against a local gpservice
+pnpm -C ui tauri build
 ```
 
 The frontend is Svelte; the application layer (tray, D-Bus transport, vault,
@@ -35,9 +43,3 @@ The GUI itself links no GPL-licensed code; the copyleft backend (`gpservice`) is
 a separate program, reached only over the `gp-protocol` D-Bus contract, and is
 distributed under its own license.
 
-## Trademarks
-
-“GlobalProtect” is a trademark of Palo Alto Networks, Inc. This is an
-independent, community project and is **not** affiliated with, endorsed by, or
-sponsored by Palo Alto Networks. The name is used only to describe
-compatibility.

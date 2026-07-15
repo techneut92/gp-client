@@ -2,12 +2,10 @@ node_modules/
 dist/
 target/
 src-tauri/target/
-src/paraglide/
+ui/src/paraglide/
 *.zip
 src-tauri.zip
 
 # Flatpak build outputs
 build-flatpak/
 .flatpak-builder/
-
-# Private, untracked materials (e.g. Flathub submission prep)

@@ -46,7 +46,7 @@ jobs:
           git archive --format=tar.gz \
             --prefix="gp-client-${version}/" \
             -o ~/rpmbuild/SOURCES/gp-client-${version}.tar.gz HEAD
-          cp src-tauri/packaging/rpm/gp-client.spec ~/rpmbuild/SPECS/
+          cp packaging/rpm/gp-client.spec ~/rpmbuild/SPECS/
           rpmbuild -bs ~/rpmbuild/SPECS/gp-client.spec
           ls -la ~/rpmbuild/SRPMS/
 

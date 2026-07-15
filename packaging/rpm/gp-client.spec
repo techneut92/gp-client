@@ -38,15 +38,15 @@ over D-Bus.
 # pnpm via corepack (bundled with nodejs); falls back to npm's global install.
 corepack enable || npm install -g pnpm
 export CI=1
-pnpm install --frozen-lockfile
-pnpm build
+pnpm -C ui install --frozen-lockfile
+pnpm -C ui build
 # --features custom-protocol: embed the frontend (production mode); otherwise the
 # app tries to load the UI from the Vite dev server at localhost:5173.
 cargo build --release --features custom-protocol --manifest-path src-tauri/Cargo.toml
 
 %install
 install -Dm755 src-tauri/target/release/gp-client %{buildroot}%{_bindir}/gp-client
-install -Dm644 src-tauri/packaging/flatpak/io.github.techneut92.GPClient.desktop \
+install -Dm644 packaging/flatpak/io.github.techneut92.GPClient.desktop \
   %{buildroot}%{_datadir}/applications/io.github.techneut92.GPClient.desktop
 install -Dm644 src-tauri/icons/128x128.png \
   %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/io.github.techneut92.GPClient.png

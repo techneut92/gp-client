@@ -111,8 +111,8 @@ modules:
       # it the app runs in dev mode and tries to load the UI from localhost:5173.
       - cargo build --release --offline --features custom-protocol --manifest-path src-tauri/Cargo.toml
       - install -Dm755 src-tauri/target/release/gp-client /app/bin/gp-client
-      - install -Dm644 src-tauri/packaging/flatpak/io.github.techneut92.GPClient.desktop /app/share/applications/io.github.techneut92.GPClient.desktop
-      - install -Dm644 src-tauri/packaging/flatpak/io.github.techneut92.GPClient.metainfo.xml /app/share/metainfo/io.github.techneut92.GPClient.metainfo.xml
+      - install -Dm644 packaging/flatpak/io.github.techneut92.GPClient.desktop /app/share/applications/io.github.techneut92.GPClient.desktop
+      - install -Dm644 packaging/flatpak/io.github.techneut92.GPClient.metainfo.xml /app/share/metainfo/io.github.techneut92.GPClient.metainfo.xml
       - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.techneut92.GPClient.png
       - install -Dm644 LICENSE /app/share/licenses/io.github.techneut92.GPClient/LICENSE
     sources:
@@ -120,11 +120,11 @@ modules:
         # Repo root (three levels up from this manifest). Skip heavy/irrelevant
         # trees so the sandbox copy stays small. dist/ (the prebuilt frontend)
         # is kept — tauri-build embeds it at compile time.
-        path: ../../../
+        path: ../../
         skip:
           - src-tauri/target
           - .git
-          - node_modules
+          - ui/node_modules
           - .flatpak-builder
           - build-flatpak
       # Vendored crate registry for the offline build (generated; see header).

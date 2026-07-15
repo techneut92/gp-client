@@ -6,20 +6,19 @@
 # Fedora, install it once with:
 #   flatpak install -y flathub org.flatpak.Builder
 #
-# The frontend (dist/) must already be built — run `pnpm build` (in the
-# gp-build distrobox) before this script. tauri-build embeds dist/ at compile
-# time.
+# The frontend (ui/dist/) must already be built — run `pnpm -C ui build` (in the
+# gp-build distrobox) before this script. tauri-build embeds it at compile time.
 #
-# Usage: src-tauri/packaging/flatpak/flatpak-build.sh
+# Usage: packaging/flatpak/flatpak-build.sh
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-root="$(cd "$here/../../.." && pwd)"          # gp-client repo root
+root="$(cd "$here/../.." && pwd)"             # gp-client repo root
 manifest="$here/io.github.techneut92.GPClient.yml"
 cd "$root"
 
-if [ ! -f dist/index.html ]; then
-  echo "error: dist/ not built. Run 'pnpm build' first (in the gp-build distrobox)." >&2
+if [ ! -f ui/dist/index.html ]; then
+  echo "error: ui/dist/ not built. Run 'pnpm -C ui build' first (in the gp-build distrobox)." >&2
   exit 1
 fi
 

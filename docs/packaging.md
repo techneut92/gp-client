@@ -8,9 +8,9 @@
 | Format | x86_64 | aarch64 | How |
 | --- | --- | --- | --- |
 | `.deb` / `.rpm` / AppImage | ✓ | ✓ | `tauri build` (rustup toolchain) |
-| `.flatpak` | ✓ | ✓ | `flatpak-builder`, manifest in `src-tauri/packaging/flatpak/` |
-| Arch `.pkg.tar.zst` | ✓ | ✓ | `makepkg`, `src-tauri/packaging/arch/PKGBUILD` |
-| Alpine `.apk` | ✓ | ✓ | `abuild`, `src-tauri/packaging/alpine/APKBUILD` |
+| `.flatpak` | ✓ | ✓ | `flatpak-builder`, manifest in `packaging/flatpak/` |
+| Arch `.pkg.tar.zst` | ✓ | ✓ | `makepkg`, `packaging/arch/PKGBUILD` |
+| Alpine `.apk` | ✓ | ✓ | `abuild`, `packaging/alpine/APKBUILD` |
 
 All native builds pass `--features custom-protocol` so the frontend is embedded
 (production mode); without it the app loads the UI from the Vite dev server at
@@ -29,7 +29,7 @@ Hard-won per-distro notes:
 ## COPR (`.rpm`)
 
 `.github/workflows/copr.yaml` (manual) builds and validates the source RPM
-(`src-tauri/packaging/rpm/gp-client.spec`). It **only submits to COPR when a
+(`packaging/rpm/gp-client.spec`). It **only submits to COPR when a
 `COPR_CONFIG` secret is present** — otherwise it's a dry run.
 
 To go live: add `COPR_CONFIG` (your `~/.config/copr` token block) as a repo
