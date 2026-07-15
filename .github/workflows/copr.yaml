@@ -15,6 +15,7 @@ on:
     tags: ['v*']
   pull_request:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   workflow_dispatch:
 
 concurrency:
