@@ -242,9 +242,18 @@ async fn system_info() -> SystemInfo {
     Some(v) => system::version_cmp(v, system::MIN_BACKEND) != std::cmp::Ordering::Less,
     None => true,
   };
+  // `installed` is the value the GUI actually gates on: in the Flatpak it's the
+  // D-Bus *activatability* of gpservice, not just whether the binary runs — so
+  // log both. A common mismatch: the binary probes fine but the service isn't
+  // activatable (e.g. the D-Bus daemon wasn't reloaded after an rpm-ostree
+  // apply-live), which shows the "backend required" screen.
+  let backend_installed = system::backend_installed();
   match &backend_version {
-    Some(v) => tracing::info!("Detected backend gpservice {v} (min {}, supported: {backend_supported})", system::MIN_BACKEND),
-    None => tracing::info!("No backend detected (gpservice not found on the host)"),
+    Some(v) => tracing::info!(
+      "Backend gpservice {v}: installed(dbus-activatable)={backend_installed}, supported={backend_supported} (min {})",
+      system::MIN_BACKEND
+    ),
+    None => tracing::info!("No backend gpservice version from the host (installed(dbus-activatable)={backend_installed})"),
   }
   SystemInfo {
     gui_version: system::GUI_VERSION.to_string(),
@@ -253,7 +262,7 @@ async fn system_info() -> SystemInfo {
     install_kind: system::install_kind_str(kind).to_string(),
     is_flatpak: system::is_flatpak(),
     flatpak_runtime: system::flatpak_runtime(),
-    backend_installed: system::backend_installed(),
+    backend_installed,
     backend_version,
     backend_supported,
     install_options: {
