@@ -107,6 +107,7 @@
         keyFile,
         keyPassword,
         modulePath: moduleValue,
+        asGateway,
       });
     } catch (e) {
       hint = m.manager_probe_failed({ error: String(e) });

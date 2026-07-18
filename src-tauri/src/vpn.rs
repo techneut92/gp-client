@@ -193,9 +193,9 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHa
 
 /// The full v2 connect pipeline. Returns the live transport on success.
 async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_handle: &tauri::AppHandle) -> Result<Transport> {
-  if !p.as_gateway {
-    bail!("Only 'connect directly as gateway' is supported in this build");
-  }
+  // Portal mode (as_gateway == false) is handled by the backend: it runs the
+  // portal prelogin, retrieves the gateway list, and logs into the chosen
+  // gateway with the portal cookie. Requires a backend that speaks protocol v5.
 
   // Resolve the client certificate (cert axis) independently of the credential
   // (SAML vs password). The credential is decided downstream: username/password
@@ -250,6 +250,7 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
     username,
     password,
     use_browser: p.use_browser,
+    as_gateway: p.as_gateway,
     dns_domains: p.dns_domains.clone(),
     opts: p.opts.clone(),
   };

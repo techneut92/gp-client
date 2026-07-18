@@ -649,6 +649,12 @@ struct ProbeForm {
   key_file: String,
   key_password: String,
   module_path: String,
+  #[serde(default = "default_true")]
+  as_gateway: bool,
+}
+
+fn default_true() -> bool {
+  true
 }
 
 /// Probe the portal's prelogin to discover the required auth method.
@@ -678,7 +684,7 @@ async fn probe_auth(state: State<'_, AppState>, form: ProbeForm) -> Result<conne
     ),
     _ => (None, None, None),
   };
-  Ok(connect::probe(form.portal.trim(), &os, &user_agent, certificate, sslkey, key_password, false).await)
+  Ok(connect::probe(form.portal.trim(), &os, &user_agent, certificate, sslkey, key_password, false, form.as_gateway).await)
 }
 
 #[tauri::command]

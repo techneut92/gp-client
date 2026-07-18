@@ -22,6 +22,11 @@ fork).
   servers; everything else stays on your normal resolvers. The main window shows
   the identity's DNS scope. Requires a 1.5-or-newer backend (older backends
   ignore the setting and keep routing all DNS through the tunnel).
+- **Portal mode, experimental** (GPC-36): the identity's *Connect directly as
+  gateway* toggle now works when turned off — the backend runs the portal flow
+  (portal login, gateway list, gateway login with the portal cookie). Needs a
+  1.5-or-newer backend. Interactive MFA/token challenges during portal auth are
+  not handled yet, and portal mode has not been verified against a live portal.
 - Licensed under the GNU General Public License v3.0-or-later (see `LICENSE`).
 - Multi-language interface: English, Dutch (Nederlands) and Frisian (Frysk),
   including the localized desktop entry.

@@ -120,6 +120,7 @@ export interface ProbeForm {
   keyFile: string;
   keyPassword: string;
   modulePath: string;
+  asGateway: boolean;
 }
 
 // camelCase keys match the Rust SettingsForm.

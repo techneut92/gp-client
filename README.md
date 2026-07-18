@@ -138,9 +138,12 @@ backend over [`gp-protocol`](https://github.com/techneut92/gp-protocol).
 
 ### Known limitations
 
-- **Gateway mode only** — identities must use "connect directly as gateway";
-  portal-mode connections (portal login incl. RSA/MFA token challenges,
-  gateway list + selection) are not supported yet — tracked in
+- **Portal mode is experimental** — direct-gateway is the default and the
+  well-tested path. Portal connections (turn *Connect directly as gateway* off)
+  are newly wired: the backend does the portal login, gateway list and gateway
+  login, but this has not yet been verified against a live portal, and
+  interactive RSA/MFA token challenges during portal auth are not handled yet.
+  Needs a 1.5-or-newer backend. Tracked in
   [GlobalProtect-openconnect-dw#47](https://github.com/techneut92/GlobalProtect-openconnect-dw/issues/47).
 
 ## Architecture

@@ -33,6 +33,8 @@ pub struct AuthParams {
   pub password: Option<String>,
   /// Run SAML in the system browser instead of the embedded webview.
   pub use_browser: bool,
+  /// Whether `server` is a gateway (direct-gateway flow) or a portal.
+  pub as_gateway: bool,
   /// Scoped-DNS opt-in (per identity): domains to scope the tunnel's DNS to.
   pub dns_domains: Vec<String>,
   /// Advanced connection options (from the settings window).
@@ -80,8 +82,9 @@ pub async fn probe(
   sslkey: Option<String>,
   key_password: Option<String>,
   ignore_tls_errors: bool,
+  as_gateway: bool,
 ) -> ProbeResult {
-  match probe_impl(server, os, user_agent, certificate, sslkey, key_password, ignore_tls_errors).await {
+  match probe_impl(server, os, user_agent, certificate, sslkey, key_password, ignore_tls_errors, as_gateway).await {
     Ok(reply) => match reply {
       ProbeReply::Saml { supports_browser, .. } => ProbeResult {
         kind: "saml".into(),
@@ -141,9 +144,11 @@ async fn probe_impl(
   sslkey: Option<String>,
   key_password: Option<String>,
   ignore_tls_errors: bool,
+  as_gateway: bool,
 ) -> Result<ProbeReply> {
   let req = ProbeRequest {
     server: server.to_string(),
+    as_gateway,
     certificate,
     sslkey,
     key_password,
@@ -173,6 +178,7 @@ pub async fn authenticate(
 
   let probe = ProbeRequest {
     server: p.server.clone(),
+    as_gateway: p.as_gateway,
     certificate: cert.clone(),
     sslkey: p.sslkey.clone(),
     key_password: p.key_password.clone(),
@@ -237,6 +243,7 @@ pub async fn authenticate(
   Ok(gp_protocol::ConnectAuthRequest {
     server: p.server.clone(),
     credential,
+    as_gateway: p.as_gateway,
     certificate: cert,
     sslkey: p.sslkey.clone(),
     key_password: p.key_password.clone(),
