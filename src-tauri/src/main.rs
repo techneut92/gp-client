@@ -242,6 +242,10 @@ async fn system_info() -> SystemInfo {
     Some(v) => system::version_cmp(v, system::MIN_BACKEND) != std::cmp::Ordering::Less,
     None => true,
   };
+  match &backend_version {
+    Some(v) => tracing::info!("Detected backend gpservice {v} (min {}, supported: {backend_supported})", system::MIN_BACKEND),
+    None => tracing::info!("No backend detected (gpservice not found on the host)"),
+  }
   SystemInfo {
     gui_version: system::GUI_VERSION.to_string(),
     os_name: system::os_pretty_name(),
@@ -788,6 +792,12 @@ fn main() {
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("gp_client=info")),
     )
     .init();
+
+  tracing::info!(
+    "GP Client {} starting ({})",
+    system::GUI_VERSION,
+    if system::is_flatpak() { "flatpak" } else { "native" }
+  );
 
   // Single-instance guard — the very first thing, before any GTK/Tauri init. If
   // another instance is already running this signals it to reveal its window and

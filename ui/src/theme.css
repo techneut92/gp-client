@@ -407,7 +407,7 @@ body.settings { background: var(--bg-grad); }
 .vault-badge.warn { color: var(--yellow); }
 /* ───────── backend-required view (install steps) ───────── */
 .svc-wrap { padding: 16px 4px 6px; }
-.svc-hero { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.svc-hero { display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 20px; }
 .svc-badge {
   position: relative; width: 78px; height: 78px; border-radius: 22px; display: flex;
   align-items: center; justify-content: center;
