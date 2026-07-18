@@ -84,6 +84,7 @@ impl Notifier {
   /// desktop notification on the connect / disconnect / error transitions.
   fn set_status(&self, generation: u64, status: Status) {
     let mut notify: Option<(String, String)> = None;
+    let mut smartcard_check: Option<String> = None;
     {
       let mut s = self.shared.lock().unwrap();
       if s.current_gen != generation {
@@ -107,6 +108,11 @@ impl Notifier {
         };
         notify = Some(("GP Client connected".into(), format!("Connected to {portal}")));
       } else if was_active && matches!(status, Status::Disconnected) {
+        // An unexpected end of a smart-card session is most often the card
+        // being removed — the hourly HIP recheck then can't present the client
+        // cert and the portal logs the session out. Defer the (blocking) card
+        // scan until after the lock is released.
+        smartcard_check = (!s.user_disconnect).then(|| s.smartcard_module.clone()).flatten();
         notify = Some(("GP Client disconnected".into(), "The VPN connection has ended".into()));
       } else if let Status::Error(e) = &status {
         if was_active {
@@ -116,10 +122,39 @@ impl Notifier {
 
       s.status = status;
     }
+    // Off-lock: if a smart-card session ended unexpectedly, check whether the
+    // card is still readable. If not, say so — both in the notification and the
+    // status line — instead of a bare "connection ended".
+    if let Some(module) = smartcard_check {
+      let card_gone = crate::pkcs11::enumerate(&module).map(|c| c.is_empty()).unwrap_or(true);
+      if card_gone {
+        let msg = "Smart card not found — the VPN session ended. Re-insert your card and reconnect.";
+        notify = Some(("GP Client disconnected".into(), msg.into()));
+        self.shared.lock().unwrap().log = msg.into();
+      }
+    }
     if let Some((summary, body)) = notify {
       notify_desktop(summary, body);
     }
     self.refresh();
+  }
+
+  /// Start of a new connection: clear the user-disconnect flag and record the
+  /// smart-card module (if this connection uses one) so an unexpected end can
+  /// be diagnosed.
+  fn begin_connection(&self, generation: u64, smartcard_module: Option<String>) {
+    let mut s = self.shared.lock().unwrap();
+    if s.current_gen != generation {
+      return;
+    }
+    s.user_disconnect = false;
+    s.smartcard_module = smartcard_module;
+  }
+
+  /// Mark the imminent teardown as user-initiated (so it isn't diagnosed as an
+  /// unexpected smart-card loss).
+  fn mark_user_disconnect(&self) {
+    self.shared.lock().unwrap().user_disconnect = true;
   }
 
   fn log(&self, line: &str) {
@@ -165,6 +200,9 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHa
     match cmd {
       UiCommand::Connect(params) => {
         let generation = notifier.bump();
+        let smartcard_module =
+          (params.cert_kind == 1 && !params.module_path.is_empty()).then(|| params.module_path.clone());
+        notifier.begin_connection(generation, smartcard_module);
         notifier.set_status(generation, Status::Connecting);
 
         // Tear down any previous connection first.
@@ -181,6 +219,7 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHa
       }
       UiCommand::Disconnect => {
         let generation = notifier.bump();
+        notifier.mark_user_disconnect();
         notifier.set_status(generation, Status::Disconnecting);
         if let Some(h) = handle.take() {
           rt.block_on(async { let _ = h.send_disconnect().await; });

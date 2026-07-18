@@ -72,4 +72,10 @@ pub struct Shared {
   pub current_gen: u64,
   /// Live connection details (valid while `status` is Connected).
   pub conn: ConnDetails,
+  /// True when the current session's last teardown was user-initiated, so an
+  /// unexpected session end can be told apart and explained.
+  pub user_disconnect: bool,
+  /// PKCS#11 module of the current smart-card connection (`None` otherwise).
+  /// Lets an unexpected session end check whether the card is still present.
+  pub smartcard_module: Option<String>,
 }

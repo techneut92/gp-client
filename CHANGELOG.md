@@ -17,6 +17,12 @@ fork).
 - GP Client is now a standalone application with its own release line, continuing
   from the earlier gpgui builds and versioning independently of the `gpservice`
   backend.
+- **Smart-card-removed detection** (GPC-37 / GPS-2): when a smart-card session
+  ends unexpectedly (e.g. the hourly HIP recheck can't find the card because it
+  was removed, and the portal logs the session out), the disconnect
+  notification and status line now say "Smart card not found — re-insert your
+  card and reconnect" instead of a bare "connection ended". User-initiated
+  disconnects are unaffected.
 - **Scoped DNS per identity** (GPC-35): the identity editor has a new *DNS
   domains* list. When set, only those domains resolve through the VPN's DNS
   servers; everything else stays on your normal resolvers. The main window shows
