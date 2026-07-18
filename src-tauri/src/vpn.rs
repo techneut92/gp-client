@@ -41,6 +41,9 @@ pub struct ConnectParams {
   /// Standard username/password (auth_method == 3).
   pub username: String,
   pub password: String,
+  /// Scoped-DNS opt-in: domains that should resolve through the VPN's DNS
+  /// (empty = all DNS through the VPN, the default).
+  pub dns_domains: Vec<String>,
   /// Advanced connection options (settings window).
   pub opts: ConnOpts,
 }
@@ -247,6 +250,7 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
     username,
     password,
     use_browser: p.use_browser,
+    dns_domains: p.dns_domains.clone(),
     opts: p.opts.clone(),
   };
 

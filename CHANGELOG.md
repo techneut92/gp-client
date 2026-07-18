@@ -17,6 +17,11 @@ fork).
 - GP Client is now a standalone application with its own release line, continuing
   from the earlier gpgui builds and versioning independently of the `gpservice`
   backend.
+- **Scoped DNS per identity** (GPC-35): the identity editor has a new *DNS
+  domains* list. When set, only those domains resolve through the VPN's DNS
+  servers; everything else stays on your normal resolvers. The main window shows
+  the identity's DNS scope. Requires a 1.5-or-newer backend (older backends
+  ignore the setting and keep routing all DNS through the tunnel).
 - Licensed under the GNU General Public License v3.0-or-later (see `LICENSE`).
 - Multi-language interface: English, Dutch (Nederlands) and Frisian (Frysk),
   including the localized desktop entry.
@@ -36,6 +41,12 @@ fork).
   rate-limited now points at 1.4.0 (was a stale 1.3.0, below the minimum the
   client can connect through). The package download itself still requires a
   connection — this only covers the API lookup.
+- Widened the spacing between the language picker's globe icon/label and the
+  dropdown on the backend-install, setup, lock and import screens — the tight
+  gap read as if they were touching (GPC-34).
+- The outdated-backend screen's action button reads "Update backend" again — a
+  duplicated translation key had replaced it with the status text "Backend
+  update available".
 
 ## [1.4.0] - 2026-07-14
 

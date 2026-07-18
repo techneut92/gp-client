@@ -37,6 +37,9 @@ pub struct Identity {
   pub cert_file: String,
   pub key_file: String,
   pub key_password: String,
+  /// Scoped-DNS opt-in: when non-empty, only these domains resolve through the
+  /// VPN's DNS servers (needs a backend that understands protocol v4).
+  pub dns_domains: Vec<String>,
 }
 
 pub struct Vault {

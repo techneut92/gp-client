@@ -2,9 +2,9 @@
 //!
 //! gp-client links **no GPL code**: the portal/gateway HTTP lives in `gpservice`
 //! behind gp-protocol handoff messages, and the SAML webview is re-authored here.
-//! `probe` + `authenticate` drive the backend over the transport. NOTE: only the
-//! D-Bus transport routes `probe` today; the loopback (WS) transport does not, so
-//! native (non-Flatpak) installs can't authenticate yet — see transport.rs.
+//! `probe` + `authenticate` drive the backend over the transport (the D-Bus
+//! system service — the sole transport for native and Flatpak installs alike,
+//! see transport.rs).
 
 use anyhow::{bail, Result};
 use gp_protocol::request::ConnectRequest;
@@ -33,6 +33,8 @@ pub struct AuthParams {
   pub password: Option<String>,
   /// Run SAML in the system browser instead of the embedded webview.
   pub use_browser: bool,
+  /// Scoped-DNS opt-in (per identity): domains to scope the tunnel's DNS to.
+  pub dns_domains: Vec<String>,
   /// Advanced connection options (from the settings window).
   pub opts: ConnOpts,
 }
@@ -227,6 +229,9 @@ pub async fn authenticate(
   }
   if !o.client_version.is_empty() {
     args_src = args_src.with_client_version(&o.client_version);
+  }
+  if !p.dns_domains.is_empty() {
+    args_src = args_src.with_dns_domains(p.dns_domains.clone());
   }
 
   Ok(gp_protocol::ConnectAuthRequest {

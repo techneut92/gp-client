@@ -9,3 +9,6 @@ src-tauri.zip
 # Flatpak build outputs
 build-flatpak/
 .flatpak-builder/
+flatpak-repo/
+*.flatpak
+.idea/

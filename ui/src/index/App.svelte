@@ -207,6 +207,20 @@
   }
 
   let chips = $state<Chip[]>([]);
+  /** True when the detected backend version is >= `min` (true when unknown —
+   *  don't nag before system info arrives). Tolerates suffixes after the
+   *  patch number (the backend reports "1.5.0 (2026-07-18)"). */
+  function backendAtLeast(min: string): boolean {
+    const v = sysInfo?.backendVersion;
+    if (!v) return true;
+    const pa = v.split('.').map((x) => Number.parseInt(x, 10) || 0);
+    const pb = min.split('.').map((x) => Number.parseInt(x, 10) || 0);
+    for (let i = 0; i < 3; i++) {
+      const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+      if (d) return d > 0;
+    }
+    return true;
+  }
   async function renderChips(): Promise<void> {
     const id = identities.find((i) => i.name === selected);
     if (!id) {
@@ -214,10 +228,29 @@
       return;
     }
     const row = (k: string, v: string | undefined, color?: string): Chip => (color !== undefined ? { k, v: v || '—', color } : { k, v: v || '—' });
+    const dns = id.dns_domains ?? [];
+    // Scoping only takes effect on backends that understand protocol v4; a
+    // pre-1.5 backend silently ignores the field, so the chip must not claim
+    // an active scope it can't have.
+    const dnsSupported = backendAtLeast('1.5.0');
     const head: Chip[] = [
       row(m.main_portal(), id.portal),
       row(m.main_auth(), authName(id.auth_method)),
       row(m.main_gateway(), id.as_gateway ? m.main_gateway_direct() : m.main_gateway_via_portal()),
+      // Scoped-DNS status: the single domain when there's one, a count when
+      // more, "all via VPN" otherwise. Lives in `head` so the async smart-card
+      // re-render keeps it.
+      row(
+        m.main_dns(),
+        dns.length === 0
+          ? m.main_dns_all()
+          : !dnsSupported
+            ? m.main_dns_needs_backend()
+            : dns.length === 1
+              ? dns[0]
+              : m.main_dns_scoped({ n: dns.length }),
+        dns.length && !dnsSupported ? 'var(--yellow)' : undefined
+      ),
     ];
     let mid: Chip[] = [];
     if (id.auth_method === 1) mid = [row(m.main_cert_file(), (id.cert_file ?? '').split('/').pop())];

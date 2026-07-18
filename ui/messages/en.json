@@ -102,7 +102,6 @@
   "main_add_identity_first": "Add an identity first.",
   "main_update_app_backend": "App & backend update available",
   "main_update_app": "App update available",
-  "main_update_backend": "Backend update available",
   "main_update_available": "{what} available — v{version}",
   "main_update_view": "View",
   "settings_title": "Advanced settings",
@@ -275,5 +274,16 @@
   "main_update_sub_app": "App v{version}",
   "main_update_sub_backend": "backend v{version}",
   "main_update_btn": "Update",
-  "settings_update_ready": "Update available"
+  "settings_update_ready": "Update available",
+  "manager_dns_domains": "DNS domains",
+  "manager_dns_domains_placeholder": "corp.example.com",
+  "manager_dns_add": "Add",
+  "manager_dns_remove": "Remove {domain}",
+  "manager_dns_scoped_hint": "Only these domains use the VPN's DNS; everything else stays on your normal DNS. Requires backend 1.5 or newer.",
+  "manager_dns_all_hint": "Empty: while connected, all DNS goes through the VPN.",
+  "main_dns": "DNS",
+  "main_dns_all": "All via VPN",
+  "main_dns_scoped": "Scoped ({n} domains)",
+  "main_dns_needs_backend": "Needs backend 1.5+",
+  "manager_dns_invalid": "Not a valid domain: {tokens}"
 }

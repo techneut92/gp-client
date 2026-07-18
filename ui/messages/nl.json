@@ -102,7 +102,6 @@
   "main_add_identity_first": "Voeg eerst een identiteit toe.",
   "main_update_app_backend": "App- & backend-update beschikbaar",
   "main_update_app": "App-update beschikbaar",
-  "main_update_backend": "Backend-update beschikbaar",
   "main_update_available": "{what} beschikbaar — v{version}",
   "main_update_view": "Bekijken",
   "settings_title": "Geavanceerde instellingen",
@@ -275,5 +274,16 @@
   "main_update_sub_app": "App v{version}",
   "main_update_sub_backend": "backend v{version}",
   "main_update_btn": "Bijwerken",
-  "settings_update_ready": "Update beschikbaar"
+  "settings_update_ready": "Update beschikbaar",
+  "manager_dns_domains": "DNS-domeinen",
+  "manager_dns_domains_placeholder": "corp.example.com",
+  "manager_dns_add": "Toevoegen",
+  "manager_dns_remove": "{domain} verwijderen",
+  "manager_dns_scoped_hint": "Alleen deze domeinen gebruiken de DNS van de VPN; al het andere blijft via je normale DNS lopen. Vereist backend 1.5 of nieuwer.",
+  "manager_dns_all_hint": "Leeg: zolang je verbonden bent, gaat alle DNS via de VPN.",
+  "main_dns": "DNS",
+  "main_dns_all": "Alles via VPN",
+  "main_dns_scoped": "Beperkt ({n} domeinen)",
+  "main_dns_needs_backend": "Vereist backend 1.5+",
+  "manager_dns_invalid": "Geen geldig domein: {tokens}"
 }

@@ -29,6 +29,8 @@ export interface Identity {
   cert_file?: string;
   key_file?: string;
   key_password?: string;
+  /** Scoped-DNS opt-in: domains that resolve through the VPN (empty = all DNS). */
+  dns_domains?: string[];
 }
 
 export interface CertInfo {

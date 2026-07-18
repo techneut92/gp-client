@@ -6,6 +6,7 @@
   import { deleteIdentity, availableModules, getConfig, listIdentities, probeAuth, saveIdentity, scanCerts, type CertInfo, type Identity, type ProbeResult } from '../lib/api';
   import CertPicker from './CertPicker.svelte';
   import AuthFields from './AuthFields.svelte';
+  import DnsDomains from './DnsDomains.svelte';
 
   interface Option {
     value: string;
@@ -22,6 +23,7 @@
 
   let certs = $state<CertInfo[]>([]);
   let asGateway = $state(true);
+  let dnsEditor: DnsDomains | undefined = $state();
 
   // form fields
   let name = $state('');
@@ -32,6 +34,7 @@
   let certFile = $state('');
   let keyFile = $state('');
   let keyPassword = $state('');
+  let dnsDomains = $state<string[]>([]);
 
   let hint = $state('');
   let log = $state('');
@@ -139,6 +142,7 @@
     certFile = '';
     keyFile = '';
     keyPassword = '';
+    dnsDomains = [];
     asGateway = true;
     setMethod(-1);
     hint = m.manager_hint_detect();
@@ -156,6 +160,7 @@
     certFile = id.cert_file ?? '';
     keyFile = id.key_file ?? '';
     keyPassword = id.key_password ?? '';
+    dnsDomains = id.dns_domains ?? [];
     if (id.module_path) moduleValue = id.module_path;
     setMethod(typeof id.auth_method === 'number' ? id.auth_method : -1);
     hint = '';
@@ -164,6 +169,8 @@
   }
 
   async function save(): Promise<void> {
+    // Commit a domain still sitting in the DNS entry field before reading it.
+    dnsEditor?.flush();
     const nm = name.trim() || portal.trim();
     if (!nm) {
       setLog(m.manager_log_need_name(), true);
@@ -184,6 +191,7 @@
       cert_file: certFile,
       key_file: keyFile,
       key_password: keyPassword,
+      dns_domains: dnsDomains,
     };
     try {
       await saveIdentity(id);
@@ -260,6 +268,9 @@
 
   <!-- cert file / username + password / saml note -->
   <AuthFields {method} bind:certFile bind:keyFile bind:keyPassword bind:username bind:password />
+
+  <!-- scoped-DNS domain list (applies to every auth method) -->
+  <DnsDomains bind:this={dnsEditor} bind:domains={dnsDomains} />
 
   <div class="switch-row">
     <div>

@@ -102,7 +102,6 @@
   "main_add_identity_first": "Heakje earst in identiteit ta.",
   "main_update_app_backend": "App- & backend-fernijing beskikber",
   "main_update_app": "App-fernijing beskikber",
-  "main_update_backend": "Backend-fernijing beskikber",
   "main_update_available": "{what} beskikber — v{version}",
   "main_update_view": "Besjen",
   "settings_title": "Avansearre ynstellingen",
@@ -275,5 +274,16 @@
   "main_update_sub_app": "App v{version}",
   "main_update_sub_backend": "backend v{version}",
   "main_update_btn": "Fernije",
-  "settings_update_ready": "Fernijing beskikber"
+  "settings_update_ready": "Fernijing beskikber",
+  "manager_dns_domains": "DNS-domeinen",
+  "manager_dns_domains_placeholder": "corp.example.com",
+  "manager_dns_add": "Tafoegje",
+  "manager_dns_remove": "{domain} fuortsmite",
+  "manager_dns_scoped_hint": "Allinne dizze domeinen brûke de DNS fan de VPN; al it oare rint fia dyn gewoane DNS. Fereasket backend 1.5 of nijer.",
+  "manager_dns_all_hint": "Leech: salang'st ferbûn bist, giet alle DNS fia de VPN.",
+  "main_dns": "DNS",
+  "main_dns_all": "Alles fia VPN",
+  "main_dns_scoped": "Beheind ({n} domeinen)",
+  "main_dns_needs_backend": "Fereasket backend 1.5+",
+  "manager_dns_invalid": "Gjin jildich domein: {tokens}"
 }

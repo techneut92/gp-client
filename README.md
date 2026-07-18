@@ -53,19 +53,95 @@ backend over [`gp-protocol`](https://github.com/techneut92/gp-protocol).
 
 ## Features
 
-- **Smart-card / PKCS#11 auth** — a YubiKey PIV (or any PKCS#11 token) client
-  certificate for portal *and* gateway login, with card auto-detection.
-- **SAML single sign-on** — either an embedded webview or your system browser —
-  plus username/password and client-certificate-file auth.
-- **Encrypted identity vault** — save multiple connections, unlocked by a PIN;
-  optionally remembered in your desktop keyring (GNOME Keyring / KWallet / COSMIC).
-- **Portal and gateway** connections, including a direct "connect as gateway" mode.
-- **System-tray client** with state-aware icons, connect-from-tray, and desktop
-  notifications; optional autostart and start-minimized.
-- **Fast, leak-proof reconnect** on resume from sleep — the tunnel is never torn
-  down, so nothing escapes it while the network comes back.
-- **Multi-language UI** — English, Dutch, Frisian, with more on the way.
-- **Update checks** for both the app and the backend.
+### Identities & vault
+
+- **Encrypted identity vault** — every saved connection (including its secrets:
+  smart-card PIN, password, key passphrase) lives in a ChaCha20-Poly1305
+  encrypted file under a key derived from your **master PIN** (Argon2id,
+  above-default cost). Plaintext exists in memory only while unlocked; the file
+  is written atomically at mode 0600, and the master PIN itself is never stored.
+- **Keyring auto-unlock (opt-in)** — remember the master PIN in your desktop
+  secret store (GNOME Keyring / KWallet / COSMIC) so the app unlocks on launch.
+  Off by default; any keyring problem falls back to the normal PIN prompt.
+- **Multiple identities** — save any number of named profiles (e.g. "Acme Corp"
+  → `gp.acme.example`) and switch from the main window or the tray.
+- **Forgotten-PIN reset** — start over with a fresh vault (saved identities are
+  unrecoverable by design — they were encrypted under the lost PIN).
+
+### Authentication
+
+- **Smart card / PKCS#11** — client-certificate login with a YubiKey PIV or any
+  PKCS#11 token: auto-detected modules (OpenSC, YubiKey ykcs11, SoftHSM,
+  p11-kit), live on-card certificate listing with cardholder, PIV slot, model
+  and expiry (renewals show up immediately; soon-to-expire is flagged), and a
+  PIN that is either stored encrypted or prompted per connect and never saved.
+- **SAML / SSO** — an embedded sign-in webview (auto-completes silently when
+  your IdP session is still valid), or your **system browser** for IdPs that
+  block embedded views — GP Client registers the `globalprotectcallback:`
+  scheme to catch the redirect.
+- **Certificate file** — PEM or PKCS#12, with optional separate key file and
+  encrypted passphrase.
+- **Username & password** — standard credentials, stored encrypted.
+- **Auto-detect** — one click probes the server's prelogin (through the
+  backend, including the mTLS handshake) and picks the right method for you.
+
+### Networking
+
+- **Scoped DNS per identity** — list the domains that should resolve through
+  the VPN's DNS; everything else stays on your normal resolvers. Empty list =
+  all DNS through the VPN while connected (the classic behavior). Requires
+  backend ≥ 1.5.
+- **Guaranteed DNS cleanup** *(backend ≥ 1.5)* — the backend reverts the
+  tunnel's DNS configuration on every session end, even abnormal ones, so a
+  dead session can never leave your system stuck on unreachable VPN resolvers.
+- **Fast, leak-proof resume** — on wake from sleep the backend re-pins the
+  gateway route to the physical NIC and reconnects in-place within seconds; the
+  tunnel is never torn down, so nothing escapes it while the network returns.
+- **Honest states** — Connected, Reconnecting and Disconnecting are distinct;
+  the UI never claims "Connected" over a dead tunnel.
+- **Advanced tunnel tuning** — reported OS/version/User-Agent/client version,
+  MTU, reconnect timeout, DPD interval, IPv6 off, DTLS off, no-xmlpost,
+  ignore-TLS-errors, custom vpnc-script and local hostname.
+
+### Desktop integration
+
+- **System tray** — state-aware icon (two styles: shield or signal ring; grey /
+  amber / green), a "Connect with" submenu over your identities, disconnect and
+  quit. Native on KDE and COSMIC; GNOME needs the AppIndicator extension.
+- **Close-to-tray, start-minimized, autostart** — the window hides while the
+  tunnel keeps running; optional XDG autostart (with hidden start).
+- **Desktop notifications** on connect, disconnect, errors and available updates.
+- **Session display** — tunnel IP and interface, gateway, live connection timer
+  and a session-expiry countdown.
+- **Wayland-friendly** — reliable window raise/focus on COSMIC and GNOME
+  Wayland, tiling-WM float hints (Pop Shell), single-instance guard that also
+  works inside the Flatpak sandbox.
+
+### Backend & installs
+
+- **Privilege separation** — the GUI is unprivileged; the tunnel runs in the
+  [`gpservice`](https://github.com/techneut92/GlobalProtect-openconnect-dw)
+  root backend, reached over the D-Bus system bus with **polkit** gating (an
+  active local user connects without a password prompt). If the GUI dies, a
+  watchdog tears the tunnel down — `tun0` is never left dangling.
+- **Guided backend install/updates** — missing or outdated backend? A guided
+  screen installs the right package via one pkexec prompt (dnf, apt, pacman,
+  zypper, apk and **rpm-ostree** for atomic distros), with copyable manual
+  steps as fallback, plus a one-button "Update all" flow and update badges.
+- **Migration from gpgui** — one-time import of the predecessor app's vault and
+  settings (same master PIN), with optional removal of the old app.
+
+### Languages
+
+- **English, Dutch (Nederlands) and Frisian (Frysk)** — switchable at runtime
+  (or follow the system), localized desktop entry included.
+
+### Known limitations
+
+- **Gateway mode only** — identities must use "connect directly as gateway";
+  portal-mode connections (portal login incl. RSA/MFA token challenges,
+  gateway list + selection) are not supported yet — tracked in
+  [GlobalProtect-openconnect-dw#47](https://github.com/techneut92/GlobalProtect-openconnect-dw/issues/47).
 
 ## Architecture
 

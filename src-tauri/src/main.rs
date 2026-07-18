@@ -631,6 +631,7 @@ pub(crate) fn start_connect(
     key_password: id.key_password,
     username: id.username,
     password: id.password,
+    dns_domains: id.dns_domains,
     opts,
   };
   cmd_tx.send(UiCommand::Connect(params)).map_err(|e| e.to_string())
