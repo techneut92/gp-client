@@ -107,7 +107,7 @@ modules:
       # App source with the prebuilt frontend (dist/) and Cargo.lock included.
       - type: archive
         url: https://github.com/techneut92/gp-client/releases/download/v1.5.0/gp-client-1.5.0-flathub.tar.gz
-        sha256: e9eaac881d7e7a40ff9e84c3423d80ac08179984aa9b8db2f86f44ded4a541f1
+        sha256: 7aba09246b8895f5531ba9d1b284f8513395ec0ebb28ea9256b15b3b4594e7c1
       # AppStream metainfo, maintained alongside this manifest.
       - type: file
         path: io.github.techneut92.GPClient.metainfo.xml
