@@ -35,8 +35,12 @@ over D-Bus.
 %autosetup -n %{name}-%{version}
 
 %build
-# pnpm via corepack (bundled with nodejs); falls back to npm's global install.
-corepack enable || npm install -g pnpm
+# The mock build user can't write /usr/local, so `corepack enable` and
+# `npm install -g` both fail with EACCES. Install pnpm into a writable prefix in
+# the build dir and put it on PATH instead.
+export npm_config_prefix="$PWD/.npm-global"
+npm install -g pnpm
+export PATH="$PWD/.npm-global/bin:$PATH"
 export CI=1
 pnpm -C ui install --frozen-lockfile
 pnpm -C ui build
