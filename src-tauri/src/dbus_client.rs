@@ -23,6 +23,8 @@ trait GpService {
   async fn submit_mfa(&self, code: String) -> zbus::Result<()>;
   /// v4: re-request the MFA challenge.
   async fn resend_mfa(&self) -> zbus::Result<()>;
+  /// Answer a portal `GatewaySelect` prompt with the chosen gateway's address.
+  async fn select_gateway(&self, gateway: String) -> zbus::Result<()>;
 
   #[zbus(signal)]
   fn vpn_state_changed(&self, state: String) -> zbus::Result<()>;
@@ -68,6 +70,14 @@ async fn connect_bus() -> Result<zbus::Connection> {
 pub async fn submit_mfa(code: String) -> Result<()> {
   let conn = connect_bus().await?;
   GpServiceProxy::new(&conn).await?.submit_mfa(code).await?;
+  Ok(())
+}
+
+/// Answer the backend's gateway picker with the chosen gateway's address —
+/// same short-lived shape as `submit_mfa`.
+pub async fn select_gateway(gateway: String) -> Result<()> {
+  let conn = connect_bus().await?;
+  GpServiceProxy::new(&conn).await?.select_gateway(gateway).await?;
   Ok(())
 }
 

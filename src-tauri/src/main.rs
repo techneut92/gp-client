@@ -119,6 +119,20 @@ struct StatePayload {
   /// Drives the inline MFA challenge card (from the backend's MfaChallenge).
   mfa_required: bool,
   mfa_prompt: String,
+  /// Drives the inline gateway picker (from the backend's GatewaySelect).
+  gw_required: bool,
+  /// The portal's gateways as `{name, host}` rows.
+  gw_list: Vec<GwOption>,
+  /// Address of the region-preferred gateway (pre-selected in the picker).
+  gw_preferred: String,
+}
+
+/// One row of the connect-time gateway picker.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GwOption {
+  name: String,
+  host: String,
 }
 
 fn status_kind(status: &Status) -> i32 {
@@ -149,6 +163,16 @@ fn build_state(shared: &Arc<Mutex<Shared>>) -> StatePayload {
     pin_module: s.pin_module.clone(),
     mfa_required: s.mfa_required,
     mfa_prompt: s.mfa_prompt.clone(),
+    gw_required: s.gw_required,
+    gw_list: s
+      .gw_list
+      .iter()
+      .map(|(name, host)| GwOption {
+        name: name.clone(),
+        host: host.clone(),
+      })
+      .collect(),
+    gw_preferred: s.gw_preferred.clone(),
   }
 }
 
@@ -575,12 +599,9 @@ fn set_remember_unlock(state: State<AppState>, enabled: bool) {
   }
 }
 
-/// Connect using a saved identity (from the unlocked vault). `portal` overrides
-/// the identity's portal when non-empty.
-/// Answer a mid-connect MFA challenge with a one-time code. The interactive
-/// challenge flow (gpservice surfacing `GatewayLogin::Mfa` over the transport and
-/// resubmitting) is tracked in GPS-16; until then this is a logged no-op so the
-/// UI's submit path exists. The push/tap-to-confirm variant is GPS-17.
+/// Answer a mid-connect MFA challenge with a one-time code — resolves the
+/// prompt the backend parked while emitting `MfaChallenge` (GPS-16). The
+/// push/tap-to-confirm variant is GPS-17.
 #[tauri::command]
 async fn submit_mfa(code: String) -> Result<(), String> {
   dbus_client::submit_mfa(code).await.map_err(|e| e.to_string())
@@ -589,6 +610,34 @@ async fn submit_mfa(code: String) -> Result<(), String> {
 #[tauri::command]
 async fn resend_mfa() -> Result<(), String> {
   dbus_client::resend_mfa().await.map_err(|e| e.to_string())
+}
+
+/// Answer the mid-connect gateway picker with the chosen gateway's address —
+/// resolves the prompt the backend parked while emitting `GatewaySelect`.
+#[tauri::command]
+async fn select_gateway(gateway: String) -> Result<(), String> {
+  dbus_client::select_gateway(gateway).await.map_err(|e| e.to_string())
+}
+
+/// Best-effort latency probe for a gateway picker row: time a TCP handshake to
+/// the gateway's TLS port. Runs on the blocking pool; returns milliseconds, or
+/// an error string when the host is unreachable within the timeout.
+#[tauri::command]
+async fn ping_gateway(host: String) -> Result<u64, String> {
+  tauri::async_runtime::spawn_blocking(move || {
+    use std::net::{TcpStream, ToSocketAddrs};
+    use std::time::{Duration, Instant};
+    let addr = format!("{host}:443")
+      .to_socket_addrs()
+      .map_err(|e| e.to_string())?
+      .next()
+      .ok_or_else(|| "no address".to_string())?;
+    let t0 = Instant::now();
+    TcpStream::connect_timeout(&addr, Duration::from_secs(3)).map_err(|e| e.to_string())?;
+    Ok(t0.elapsed().as_millis() as u64)
+  })
+  .await
+  .map_err(|e| e.to_string())?
 }
 
 /// Answer a mid-connect smart-card prompt: the PIN plus the certificate chosen in
@@ -1006,6 +1055,8 @@ fn main() {
       open_identity_editor,
       submit_mfa,
       resend_mfa,
+      select_gateway,
+      ping_gateway,
       submit_pin
     ])
     .setup(move |app| {

@@ -121,10 +121,13 @@ impl Notifier {
       }
 
       s.status = status;
-      // Any status change ends an active MFA challenge (the MfaChallenge state
-      // itself doesn't go through set_status).
+      // Any status change ends an active MFA challenge or gateway prompt (those
+      // states don't go through set_status themselves).
       s.mfa_required = false;
       s.mfa_prompt.clear();
+      s.gw_required = false;
+      s.gw_list = Vec::new();
+      s.gw_preferred.clear();
     }
     // Off-lock: if a smart-card session ended unexpectedly, check whether the
     // card is still readable. If not, say so — both in the notification and the
@@ -179,6 +182,30 @@ impl Notifier {
       }
       s.mfa_required = prompt.is_some();
       s.mfa_prompt = prompt.unwrap_or_default();
+    }
+    self.refresh();
+  }
+
+  /// Show/clear the inline gateway picker from the backend's GatewaySelect
+  /// state. `Some((list, preferred))` shows it; `None` clears it.
+  fn set_gateway_select(&self, generation: u64, offer: Option<(Vec<(String, String)>, String)>) {
+    {
+      let mut s = self.shared.lock().unwrap();
+      if s.current_gen != generation {
+        return;
+      }
+      match offer {
+        Some((list, preferred)) => {
+          s.gw_required = true;
+          s.gw_list = list;
+          s.gw_preferred = preferred;
+        }
+        None => {
+          s.gw_required = false;
+          s.gw_list = Vec::new();
+          s.gw_preferred = String::new();
+        }
+      }
     }
     self.refresh();
   }
@@ -433,6 +460,19 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
         // Interactive MFA/token challenge: keep the (already Connecting) status
         // and surface the prompt inline.
         VpnState::MfaChallenge(info) => n.set_mfa_challenge(generation, Some(info.message().to_string())),
+        // Portal offered several gateways: surface the inline picker (preferred
+        // pre-selected); `select_gateway` answers it and the connect resumes.
+        VpnState::GatewaySelect(info) => n.set_gateway_select(
+          generation,
+          Some((
+            info
+              .gateways()
+              .iter()
+              .map(|g| (g.name().to_string(), g.server().to_string()))
+              .collect(),
+            info.gateway().server().to_string(),
+          )),
+        ),
         // Keep the connection details — the session survives the reconnect.
         VpnState::Reconnecting(_) => n.set_status(generation, Status::Reconnecting),
         VpnState::Disconnecting => n.set_status(generation, Status::Disconnecting),

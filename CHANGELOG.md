@@ -41,8 +41,16 @@ fork).
 - **Portal mode, experimental** (GPC-36): the identity's *Connect directly as
   gateway* toggle now works when turned off — the backend runs the portal flow
   (portal login, gateway list, gateway login with the portal cookie). Needs a
-  1.5-or-newer backend. Interactive MFA/token challenges during portal auth are
-  not handled yet, and portal mode has not been verified against a live portal.
+  1.5-or-newer backend. Interactive MFA/token challenges are answered in portal
+  mode too — the portal's RSA/OTP challenge opens the same inline MFA card as a
+  gateway challenge. Portal mode has not been verified against a live portal.
+- **Connect-time gateway picker** (GPC-36): when the portal offers more than one
+  gateway, the connecting window pauses on a picker — each row shows the
+  gateway's name, address and a live latency estimate (a TCP handshake to its
+  TLS port, color-coded), with the backend's region-preferred gateway
+  pre-selected so *Continue* keeps the old automatic behavior. Needs a backend
+  with the `GatewaySelect`/`select_gateway` handshake (1.5-or-newer); single-
+  gateway portals and direct-gateway identities never see the prompt.
 - **Inline connect-time challenges (UI ready, dormant).** The connecting window
   can now show an **MFA challenge** — a 6-digit code for TOTP/SMS/RSA-token, plus
   a **push / tap-to-confirm** "Waiting for approval" variant — and a **smart-card

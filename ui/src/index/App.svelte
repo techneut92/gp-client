@@ -16,6 +16,7 @@
   import BackendTooNew from './BackendTooNew.svelte';
   import ImportView from './ImportView.svelte';
   import UpdateBanner from './UpdateBanner.svelte';
+  import GatewayChallenge from './GatewayChallenge.svelte';
   import MfaChallenge from './MfaChallenge.svelte';
   import PinChallenge from './PinChallenge.svelte';
   import StatusHero from './StatusHero.svelte';
@@ -55,6 +56,10 @@
   let pinActive = $state(false);
   let pinPrompt = $state<string | undefined>(undefined);
   let pinModule = $state<string | undefined>(undefined);
+  // Portal gateway picker (backend's GatewaySelect state).
+  let gwActive = $state(false);
+  let gwList = $state<{ name: string; host: string }[]>([]);
+  let gwPreferred = $state('');
   // Certs on the token, for the connect-time picker; scanned when the prompt opens.
   let pinCerts = $state<CertInfo[]>([]);
   // Pre-selection: the identity's stored cert, else the last pick (per identity,
@@ -351,7 +356,7 @@
   const dotLive = $derived(lastKind === 1 || lastKind === 2 || lastKind === 4);
   // Reconnecting keeps the connected details view — the session survives.
   const isConnectedView = $derived(lastKind === 2 || lastKind === 4);
-  const challengeActive = $derived((mfaActive || pinActive) && lastKind === 1);
+  const challengeActive = $derived((mfaActive || pinActive || gwActive) && lastKind === 1);
   // Identity block shows only when idle (disconnected / error) — hidden while
   // connecting or connected, matching the design.
   const idleView = $derived(lastKind === 0 || lastKind === 3);
@@ -394,6 +399,9 @@
     pinActive = pinNowActive;
     pinPrompt = s.pinPrompt || undefined;
     pinModule = s.pinModule || undefined;
+    gwActive = !!s.gwRequired;
+    gwList = s.gwList || [];
+    gwPreferred = s.gwPreferred || '';
     // kind 4 (reconnecting) keeps the elapsed clock — the session survives.
     if (kind === 2 || kind === 4) {
       if (liveT0 === null) liveT0 = Date.now();
@@ -654,6 +662,8 @@
       <MfaChallenge method={mfaMethod} prompt={mfaPrompt} onSubmit={(c) => void api.submitMfa(c)} onResend={() => void api.resendMfa()} />
     {:else if challengeActive && pinActive}
       <PinChallenge prompt={pinPrompt} module={pinModule} certs={pinCerts} defaultUri={pinDefaultUri} onSubmit={onPinSubmit} />
+    {:else if challengeActive && gwActive}
+      <GatewayChallenge gateways={gwList} preferred={gwPreferred} identity={selected ?? ''} onSubmit={(h) => void api.selectGateway(h)} />
     {/if}
 
     <!-- idle (disconnected / error): pick identity — hidden while connecting -->

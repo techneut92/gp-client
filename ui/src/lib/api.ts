@@ -139,6 +139,11 @@ export interface VpnState {
   pinPrompt?: string;
   /** PKCS#11 module file name (card-block sub-line); "" → "PKCS#11 token". */
   pinModule?: string;
+  /** Mid-connect gateway picker (the portal offered several gateways). */
+  gwRequired?: boolean;
+  gwList?: { name: string; host: string }[];
+  /** Address of the region-preferred gateway (pre-select it). */
+  gwPreferred?: string;
 }
 
 export interface ProbeResult {
@@ -240,10 +245,20 @@ export function disconnect(): Promise<void> {
   return invoke<void>('disconnect');
 }
 
-/** Answer a mid-connect MFA challenge with a one-time code (TOTP/SMS/RSA token).
- *  Backend wiring is GPS-16; today this is a no-op relay. */
+/** Answer a mid-connect MFA challenge with a one-time code (TOTP/SMS/RSA
+ *  token) — resolves the backend's parked `MfaChallenge` prompt (GPS-16). */
 export function submitMfa(code: string): Promise<void> {
   return invoke<void>('submit_mfa', { code });
+}
+
+/** Answer the mid-connect gateway picker with the chosen gateway's address. */
+export function selectGateway(gateway: string): Promise<void> {
+  return invoke<void>('select_gateway', { gateway });
+}
+
+/** Time a TCP handshake to the gateway's TLS port, in ms (picker latency hint). */
+export function pingGateway(host: string): Promise<number> {
+  return invoke<number>('ping_gateway', { host });
 }
 
 /** Ask the backend to re-send the MFA challenge (new code / re-push). */

@@ -92,4 +92,11 @@ pub struct Shared {
   pub mfa_required: bool,
   /// The gateway/IdP prompt for the current MFA challenge.
   pub mfa_prompt: String,
+  /// True while the backend is waiting for a portal gateway choice (gpservice's
+  /// `VpnState::GatewaySelect`) — drives the inline gateway picker.
+  pub gw_required: bool,
+  /// The gateways the portal offered, as `(name, address)` pairs.
+  pub gw_list: Vec<(String, String)>,
+  /// Address of the region-preferred gateway (the picker pre-selects it).
+  pub gw_preferred: String,
 }

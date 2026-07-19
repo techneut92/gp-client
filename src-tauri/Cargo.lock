@@ -1608,9 +1608,9 @@ dependencies = [
 
 [[package]]
 name = "gp-protocol"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "341fbfe1a54302dc39a4b054e889b673ef9eb929484bd72a7b98b10b2b8f4f0e"
+checksum = "84efd949456ae88c173935bd4dd98bdcfedcab68f85f22246677441b7213bb05"
 dependencies = [
  "chrono",
  "humantime",
