@@ -103,10 +103,6 @@ fork).
   which documents the scoped-DNS feature and how to disable Chrome's async
   resolver (flag or the `BuiltInDnsClientEnabled` policy). Firefox and other
   glibc-based apps are unaffected.
-- The identity editor's **Save identity** button now flashes green with a
-  checkmark and "Saved" for a moment after a successful save, then fades back to
-  its normal label — a clearer, in-place confirmation than the previous text note
-  below the form.
 - Trimmed the "Requires backend 1.5 or newer" sentence from the identity editor's
   scoped-DNS hint; the main window already flags the backend requirement where it
   matters.
