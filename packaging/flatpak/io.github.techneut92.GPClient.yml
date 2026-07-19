@@ -51,10 +51,16 @@ finish-args:
 
 modules:
   # libpcsclite client (to reach host pcscd via --socket=pcsc). The client/socket
-  # protocol is stable, so an older release is fine against a newer host pcscd.
+  # protocol is MAJOR 4 with backward-compat to MINOR 4 (pcsc-lite ~1.9+), so
+  # this bundled client interoperates with any modern host pcscd, older or newer.
   - name: pcsc-lite
     buildsystem: meson
     config-opts:
+      # Force /app/lib: the fdo SDK's meson defaults libdir to lib64, but the
+      # flatpak loader path is /app/lib — libpcsclite.so.1 in lib64 is never
+      # found, so opensc falls back to a runtime lib that can't reach pcscd and
+      # the in-app smart-card cert scan dies with CKR_GENERAL_ERROR.
+      - --libdir=lib
       - -Dlibsystemd=false
       - -Dlibudev=false
       - -Dpolkit=false

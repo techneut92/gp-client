@@ -132,6 +132,12 @@ fork).
 - The outdated-backend screen's action button reads "Update backend" again — a
   duplicated translation key had replaced it with the status text "Backend
   update available".
+- **Flatpak: the smart-card cert picker works again** (GPC-52). The bundled
+  `libpcsclite` was installing to `/app/lib64`, which isn't on the Flatpak
+  loader path, so the in-sandbox token scan failed (`CKR_GENERAL_ERROR`) and the
+  connect-time picker showed an empty "Smart card" row. Forcing the pcsc-lite
+  build to `--libdir=lib` pins it where the loader looks, independent of the
+  SDK's meson default. Stored-cert connections were unaffected.
 
 ## [1.4.0] - 2026-07-14
 

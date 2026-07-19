@@ -52,6 +52,11 @@ modules:
   - name: pcsc-lite
     buildsystem: meson
     config-opts:
+      # Force /app/lib: the fdo SDK's meson defaults libdir to lib64, but the
+      # flatpak loader path is /app/lib — libpcsclite.so.1 in lib64 is never
+      # found, so opensc falls back to a runtime lib that can't reach pcscd and
+      # the in-app smart-card cert scan dies with CKR_GENERAL_ERROR.
+      - --libdir=lib
       - -Dlibsystemd=false
       - -Dlibudev=false
       - -Dpolkit=false
