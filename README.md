@@ -39,6 +39,12 @@ backend over [`gp-protocol`](https://github.com/techneut92/gp-protocol).
 <p align="center"><em>Identities list · per-identity editor (auth · certificate · connection).</em></p>
 
 <p align="center">
+  <img width="320" src="docs/screenshots/identity_connection_top.png" alt="Identity editor — connection settings (reported OS, user-agent, MTU)">
+  <img width="320" src="docs/screenshots/identity_connection_bottom.png" alt="Identity editor — connection settings (DTLS, XML-POST, vpnc-script, hostname)">
+</p>
+<p align="center"><em>Per-identity connection tuning — top &amp; bottom of the Connection tab.</em></p>
+
+<p align="center">
   <img width="320" src="docs/screenshots/main_connecting.png" alt="Connecting — inline smart-card PIN and certificate picker">
   <img width="320" src="docs/screenshots/settings_general.png" alt="General settings — startup, tray, language">
 </p>
