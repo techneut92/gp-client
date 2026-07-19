@@ -343,19 +343,19 @@ jobs:
               cd /src/packaging/alpine
               REPODEST=/src/apk-out abuild -r
             "
-          '
 
-      # abuild names the .apk without the arch, so both matrix arches produce the
-      # same filename and would clobber each other on the release. Label per arch.
-      - name: Label apk by arch
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          shopt -s globstar nullglob
-          for f in apk-out/**/*.apk; do
-            case "$f" in *-${{ matrix.arch }}.apk) continue;; esac
-            mv "$f" "${f%.apk}-${{ matrix.arch }}.apk"
-          done
-          ls -la apk-out/**/*.apk
+            # abuild names the .apk without the arch, so both matrix arches
+            # produce the same filename and would clobber on the release. Label
+            # per arch here, inside the container: abuild writes the output dir as
+            # the builder user, so the host runner can read the .apk but cannot
+            # rename it. Do it as root while we still can, then make it readable.
+            for f in /src/apk-out/*/*/*.apk; do
+              case "$f" in *-${{ matrix.arch }}.apk) continue ;; esac
+              mv "$f" "${f%.apk}-${{ matrix.arch }}.apk"
+            done
+            chmod -R a+rX /src/apk-out
+            ls -la /src/apk-out/*/*/*.apk
+          '
 
       - name: Publish to the release
         if: startsWith(github.ref, 'refs/tags/v')
