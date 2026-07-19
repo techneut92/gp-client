@@ -94,12 +94,15 @@ jobs:
             -exec cp {} dist-artifacts/ \;
           ls -la dist-artifacts
 
-      - uses: actions/upload-artifact@v7
+      # Attach straight to the GitHub Release (tag builds). Release assets don't
+      # count against the tiny Actions artifact-storage quota; matrix jobs all
+      # append to the same release.
+      - name: Publish to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
-          name: bundles-${{ matrix.arch }}
-          path: dist-artifacts/*
-          retention-days: 1
-          if-no-files-found: error
+          files: dist-artifacts/*
+          fail_on_unmatched_files: true
 
   # ---------------------------------------------------------------------------
   # Flatpak — built from the committed manifest + cargo-sources.json.
@@ -155,12 +158,12 @@ jobs:
             "io.github.techneut92.GPClient-${{ matrix.arch }}.flatpak" \
             io.github.techneut92.GPClient master
 
-      - uses: actions/upload-artifact@v7
+      - name: Publish to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
-          name: flatpak-${{ matrix.arch }}
-          path: '*.flatpak'
-          retention-days: 1
-          if-no-files-found: error
+          files: '*.flatpak'
+          fail_on_unmatched_files: true
 
   # ---------------------------------------------------------------------------
   # Arch Linux package (.pkg.tar.zst) — built in an archlinux container.
@@ -209,13 +212,13 @@ jobs:
           cp packaging/arch/PKGBUILD .
           su builder -c "makepkg -f --noconfirm"
 
-      - uses: actions/upload-artifact@v7
+      - name: Publish to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
-          name: arch-${{ matrix.arch }}
           # Arch Linux ARM defaults to .pkg.tar.xz, x86 Arch to .pkg.tar.zst.
-          path: '*.pkg.tar.*'
-          retention-days: 1
-          if-no-files-found: error
+          files: '*.pkg.tar.*'
+          fail_on_unmatched_files: true
 
   # ---------------------------------------------------------------------------
   # Alpine package (.apk). Checkout runs on the host (JavaScript actions can't
@@ -268,37 +271,9 @@ jobs:
             "
           '
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: apk-${{ matrix.arch }}
-          path: apk-out/**/*.apk
-          retention-days: 1
-          if-no-files-found: error
-
-  # ---------------------------------------------------------------------------
-  # Attach everything to the GitHub Release (tag pushes only).
-  # ---------------------------------------------------------------------------
-  release:
-    name: GitHub Release
-    needs: [tauri-bundles, flatpak, arch, apk]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-
-      - name: Flatten artifacts
-        run: |
-          mkdir -p release
-          find artifacts -type f \
-            \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \
-               -o -name '*.flatpak' -o -name '*.pkg.tar.*' -o -name '*.apk' \) \
-            -exec cp {} release/ \;
-          ls -la release
-
-      - name: Publish release
+      - name: Publish to the release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
+          files: apk-out/**/*.apk
           fail_on_unmatched_files: true

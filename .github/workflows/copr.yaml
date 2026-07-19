@@ -67,10 +67,3 @@ jobs:
           chmod 600 ~/.config/copr
           echo "Submitting $srpm to $COPR_PROJECT"
           copr-cli build "$COPR_PROJECT" "$srpm" --nowait
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: srpm
-          path: ~/rpmbuild/SRPMS/*.src.rpm
-          retention-days: 1
-          if-no-files-found: error
