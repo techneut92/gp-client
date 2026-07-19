@@ -94,6 +94,16 @@ jobs:
             -exec cp {} dist-artifacts/ \;
           ls -la dist-artifacts
 
+      # Release notes = this version's CHANGELOG section (so the release body isn't
+      # the tag's commit message). Only this job sets the body; the other matrix
+      # jobs just append assets, which preserves it.
+      - name: Extract release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '$0 ~ "^## \\[" v "\\]"{p=1;print;next} /^## \[/{if(p)exit} p' CHANGELOG.md > RELEASE_NOTES.md
+          [ -s RELEASE_NOTES.md ] || echo "GP Client ${GITHUB_REF_NAME}" > RELEASE_NOTES.md
+
       # Attach straight to the GitHub Release (tag builds). Release assets don't
       # count against the tiny Actions artifact-storage quota; matrix jobs all
       # append to the same release.
@@ -102,6 +112,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist-artifacts/*
+          body_path: RELEASE_NOTES.md
           fail_on_unmatched_files: true
 
   # ---------------------------------------------------------------------------
