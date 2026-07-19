@@ -98,6 +98,7 @@ jobs:
         with:
           name: bundles-${{ matrix.arch }}
           path: dist-artifacts/*
+          retention-days: 1
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -158,6 +159,7 @@ jobs:
         with:
           name: flatpak-${{ matrix.arch }}
           path: '*.flatpak'
+          retention-days: 1
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -212,6 +214,7 @@ jobs:
           name: arch-${{ matrix.arch }}
           # Arch Linux ARM defaults to .pkg.tar.xz, x86 Arch to .pkg.tar.zst.
           path: '*.pkg.tar.*'
+          retention-days: 1
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -269,6 +272,7 @@ jobs:
         with:
           name: apk-${{ matrix.arch }}
           path: apk-out/**/*.apk
+          retention-days: 1
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
