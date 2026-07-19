@@ -65,9 +65,9 @@
   let authView = $state('webview');
 
   // ── Connection ──
-  let os = $state('Linux');
+  let os = $state('Windows');
   let osVersion = $state('');
-  let userAgent = $state('PAN GlobalProtect/6.2.1-1290');
+  let userAgent = $state('PAN GlobalProtect');
   let clientVersion = $state('');
   let mtu = $state(0);
   let reconnectTimeout = $state(30);
@@ -199,9 +199,9 @@
     storeCert = false;
     storePin = false;
     authView = 'webview';
-    os = 'Linux';
+    os = 'Windows';
     osVersion = '';
-    userAgent = 'PAN GlobalProtect/6.2.1-1290';
+    userAgent = 'PAN GlobalProtect';
     clientVersion = '';
     mtu = 0;
     reconnectTimeout = 30;
@@ -240,9 +240,9 @@
     dnsDomains = id.dns_domains ?? [];
     if (id.module_path) moduleValue = id.module_path;
     authView = id.auth_view || 'webview';
-    os = id.os || 'Linux';
+    os = id.os || 'Windows';
     osVersion = id.os_version ?? '';
-    userAgent = id.user_agent || 'PAN GlobalProtect/6.2.1-1290';
+    userAgent = id.user_agent || 'PAN GlobalProtect';
     clientVersion = id.client_version ?? '';
     mtu = id.mtu ?? 0;
     reconnectTimeout = id.reconnect_timeout ?? 30;
