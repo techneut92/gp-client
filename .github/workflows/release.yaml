@@ -282,6 +282,18 @@ jobs:
             "
           '
 
+      # abuild names the .apk without the arch, so both matrix arches produce the
+      # same filename and would clobber each other on the release. Label per arch.
+      - name: Label apk by arch
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          shopt -s globstar nullglob
+          for f in apk-out/**/*.apk; do
+            case "$f" in *-${{ matrix.arch }}.apk) continue;; esac
+            mv "$f" "${f%.apk}-${{ matrix.arch }}.apk"
+          done
+          ls -la apk-out/**/*.apk
+
       - name: Publish to the release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
