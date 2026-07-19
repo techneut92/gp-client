@@ -1,3 +1,8 @@
+# Cargo's release profile emits no compile-dir debug sources, so the
+# debugsource file list comes out empty — EL10's rpmbuild errors on that
+# ("Empty %%files file .../debugsourcefiles.list"). No debuginfo to package.
+%global debug_package %{nil}
+
 Name:           gp-client
 Version:        1.5.0
 Release:        1%{?dist}
@@ -63,7 +68,7 @@ install -Dm644 LICENSE %{buildroot}%{_datadir}/licenses/%{name}/LICENSE
 %license %{_datadir}/licenses/%{name}/LICENSE
 
 %changelog
-* Mon Jul 14 2026 Dylan Westra <dylanwestra@gmail.com> - 1.5.0-1
+* Tue Jul 14 2026 Dylan Westra <dylanwestra@gmail.com> - 1.5.0-1
 - New independent GP Client GUI (Svelte + Tauri): connect, identity manager,
   settings and About; smart-card, SAML (embedded or system browser) and password
   sign-in over the gpservice backend.
