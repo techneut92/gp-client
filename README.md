@@ -102,14 +102,9 @@ backend over [`gp-protocol`](https://github.com/techneut92/gp-protocol).
   the VPN's DNS; everything else stays on your normal resolvers. Empty list =
   all DNS through the VPN while connected (the classic behavior). Requires
   backend ≥ 1.5.
-- **Guaranteed DNS cleanup** *(backend ≥ 1.5)* — the backend reverts the
-  tunnel's DNS configuration on every session end, even abnormal ones, so a
-  dead session can never leave your system stuck on unreachable VPN resolvers.
 - **Fast, leak-proof resume** — on wake from sleep the backend re-pins the
   gateway route to the physical NIC and reconnects in-place within seconds; the
   tunnel is never torn down, so nothing escapes it while the network returns.
-- **Honest states** — Connected, Reconnecting and Disconnecting are distinct;
-  the UI never claims "Connected" over a dead tunnel.
 - **Advanced tunnel tuning** — reported OS/version/User-Agent/client version,
   MTU, reconnect timeout, DPD interval, IPv6 off, DTLS off, no-xmlpost,
   ignore-TLS-errors, custom vpnc-script and local hostname.
@@ -139,8 +134,6 @@ backend over [`gp-protocol`](https://github.com/techneut92/gp-protocol).
   screen installs the right package via one pkexec prompt (dnf, apt, pacman,
   zypper, apk and **rpm-ostree** for atomic distros), with copyable manual
   steps as fallback, plus a one-button "Update all" flow and update badges.
-- **Migration from gpgui** — one-time import of the predecessor app's vault and
-  settings (same master PIN), with optional removal of the old app.
 
 ### Languages
 
