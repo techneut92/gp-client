@@ -150,11 +150,13 @@ backend over [`gp-protocol`](https://github.com/techneut92/gp-protocol).
 
 - **Portal mode is experimental** — direct-gateway is the default and the
   well-tested path. Portal connections (turn *Connect directly as gateway* off)
-  are newly wired: the backend does the portal login, gateway list and gateway
-  login, but this has not yet been verified against a live portal, and
-  interactive RSA/MFA token challenges during portal auth are not handled yet.
-  Needs a 1.5-or-newer backend. Tracked in
-  [GlobalProtect-openconnect-dw#47](https://github.com/techneut92/GlobalProtect-openconnect-dw/issues/47).
+  are fully wired: the backend runs the portal login, gateway list and gateway
+  login; interactive **RSA/MFA token challenges are answered** (during portal
+  auth *and* the gateway step); and when the portal offers several gateways a
+  **picker** appears at connect time with a live latency hint. What's still
+  outstanding is real-world validation — this path hasn't yet been confirmed
+  against a live portal. Needs a 1.5-or-newer backend. Reports welcome in
+  [GlobalProtect-openconnect-dw#41](https://github.com/techneut92/GlobalProtect-openconnect-dw/issues/41).
 
 ## Architecture
 
@@ -181,24 +183,56 @@ over a stable wire contract:
 
 ## Install
 
-GP Client (the GUI) and the `gpservice` backend install separately.
+GP Client (the GUI) and the `gpservice` backend install **separately** — install
+both. On **Fedora / RHEL / AlmaLinux / Rocky** use the COPR repos; everywhere
+else, download the package from the release and install it (Flatpak is the
+recommended GUI channel on any distro).
 
-1. **The GUI** — Flatpak is the recommended channel (Flathub submission pending);
-   native `.deb`, `.rpm`, AppImage, Arch and Alpine packages are attached to each
-   [release](https://github.com/techneut92/gp-client/releases):
+### The GUI
 
-   ```bash
-   curl -fLO https://github.com/techneut92/gp-client/releases/latest/download/io.github.techneut92.GPClient.flatpak
-   flatpak install --user --or-update --assumeyes io.github.techneut92.GPClient.flatpak
-   flatpak run io.github.techneut92.GPClient
-   ```
+**Flatpak** — recommended on any distribution (Flathub submission pending):
 
-2. **The backend** — install the `gpservice` host package from the
-   [backend releases](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases)
-   (`.rpm` / `.deb` / `.pkg.tar.zst` / `.apk`, or the Fedora COPR / Ubuntu apt repo).
-   On first run GP Client detects whether a compatible backend (**≥ 1.3.1**) is
-   present and, if not, shows an install/upgrade screen with the exact command for
-   your distribution.
+```bash
+curl -fLO https://github.com/techneut92/gp-client/releases/latest/download/io.github.techneut92.GPClient.flatpak
+flatpak install --user --or-update --assumeyes io.github.techneut92.GPClient.flatpak
+```
+
+**Fedora / RHEL / AlmaLinux / Rocky** — the COPR repo (EL 10 + Fedora):
+
+```bash
+sudo dnf copr enable techneut92/gp-client
+sudo dnf install gp-client
+```
+
+On atomic desktops (Silverblue, Kinoite, Bazzite, Bluefin, uBlue) `dnf copr`
+isn't available — add the repo file and layer it:
+
+```bash
+sudo curl -Ls -o /etc/yum.repos.d/techneut92-gp-client.repo \
+  https://copr.fedorainfracloud.org/coprs/techneut92/gp-client/repo/fedora-$(rpm -E %fedora)/techneut92-gp-client-fedora-$(rpm -E %fedora).repo
+rpm-ostree install gp-client && systemctl reboot
+```
+
+**Other distributions** — download the matching package (`.deb`, AppImage, Arch
+`.pkg.tar.zst`, Alpine `.apk`) from the
+[latest release](https://github.com/techneut92/gp-client/releases) and install it
+with your package manager (e.g. `sudo apt install ./GP.Client_*_amd64.deb`).
+
+### The backend
+
+**Fedora / RHEL / AlmaLinux / Rocky** — the companion COPR (rpm-ostree on atomic,
+as above):
+
+```bash
+sudo dnf copr enable techneut92/globalprotect-openconnect-dw
+sudo dnf install globalprotect-openconnect-dw
+```
+
+**Other distributions** — grab the `.rpm` / `.deb` / `.pkg.tar.zst` / `.apk` from
+the [backend releases](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases)
+and install it. On first run GP Client detects whether a compatible backend
+(**≥ 1.3.1**) is present and, if not, shows an install/upgrade screen with the
+exact command for your distribution.
 
 Migrating from the old `gpgui` app? On first launch GP Client offers to import
 your identities and settings and remove the old app in one click.
