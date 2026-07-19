@@ -1,8 +1,13 @@
 // GP Client GUI
-// Copyright (c) 2026 Dylan Westra (techneut92). All rights reserved. See LICENSE.
+// Copyright (C) 2026 Dylan Westra (techneut92)
 //
-// Links no GPL code: authentication runs in the separate `gpservice` backend,
-// which this GUI drives only over the `gp-protocol` wire contract.
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU General Public License as published by the Free Software
+// Foundation, either version 3 of the License, or (at your option) any later
+// version. See the LICENSE file for the full text.
+//
+// Links no GPL code itself: authentication runs in the separate `gpservice`
+// backend, which this GUI drives only over the `gp-protocol` wire contract.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 //! gpgui — Tauri front-end for GlobalProtect-openconnect (PKCS#11 fork).
@@ -22,7 +27,6 @@ mod connect;
 mod import;
 mod dbus_client;
 mod pkcs11;
-mod pin;
 mod saml;
 mod secrets;
 mod single_instance;
@@ -50,6 +54,8 @@ use vpn::{ConnectParams, Notifier, UiCommand};
 /// Shared handles exposed to the Tauri commands.
 struct AppState {
   cmd_tx: std::sync::mpsc::Sender<UiCommand>,
+  /// Bridge for the inline smart-card PIN prompt (see `vpn::PinSlot`).
+  pin_tx: vpn::PinSlot,
   shared: Arc<Mutex<Shared>>,
   cfg: Arc<Mutex<Config>>,
   vault: Arc<Mutex<Vault>>,
@@ -62,23 +68,11 @@ struct AppState {
 }
 
 /// Advanced options edited in the settings window (persisted; read at connect).
+/// The settings window now edits general (startup + tray) options only; the
+/// connection/SSO options moved onto each identity (see the editor window).
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SettingsForm {
-  os: String,
-  user_agent: String,
-  auth_view: String,
-  mtu: u32,
-  reconnect_timeout: u32,
-  force_dpd: u32,
-  disable_ipv6: bool,
-  no_dtls: bool,
-  no_xmlpost: bool,
-  ignore_tls_errors: bool,
-  vpnc_script: String,
-  local_hostname: String,
-  os_version: String,
-  client_version: String,
   tray_icon: String,
   run_at_startup: bool,
   start_minimized: bool,
@@ -116,6 +110,15 @@ struct StatePayload {
   ip: String,
   iface: String,
   expires: String,
+  /// Drives the inline smart-card PIN prompt in the connecting view.
+  pin_required: bool,
+  /// The smart-card manufacturer being unlocked (subtitle + card-block label).
+  pin_prompt: String,
+  /// The PKCS#11 module file name behind the prompt (card-block sub-line).
+  pin_module: String,
+  /// Drives the inline MFA challenge card (from the backend's MfaChallenge).
+  mfa_required: bool,
+  mfa_prompt: String,
 }
 
 fn status_kind(status: &Status) -> i32 {
@@ -141,6 +144,11 @@ fn build_state(shared: &Arc<Mutex<Shared>>) -> StatePayload {
     ip: s.conn.ip.clone(),
     iface: s.conn.iface.clone(),
     expires: s.conn.expires.clone(),
+    pin_required: s.pin_required,
+    pin_prompt: s.pin_prompt.clone(),
+    pin_module: s.pin_module.clone(),
+    mfa_required: s.mfa_required,
+    mfa_prompt: s.mfa_prompt.clone(),
   }
 }
 
@@ -191,6 +199,12 @@ fn browse_file(title: String) -> Option<String> {
 
 #[tauri::command]
 fn disconnect(state: State<AppState>) {
+  // If a smart-card PIN prompt is pending, cancel it (unblocking the connect
+  // pipeline) rather than queuing a disconnect behind the blocked manager loop.
+  if let Some(tx) = state.pin_tx.lock().unwrap().take() {
+    let _ = tx.send(None);
+    return;
+  }
   let _ = state.cmd_tx.send(UiCommand::Disconnect);
 }
 
@@ -215,10 +229,19 @@ struct SystemInfo {
   flatpak_runtime: Option<String>,
   backend_installed: bool,
   backend_version: Option<String>,
-  /// True when the backend agrees with the GUI on `major.minor` (or the backend
-  /// isn't installed yet — that case is reported via `backend_installed`).
-  /// Patch-level differences are compatible and never warned about.
-  compatible: bool,
+  /// False when an installed backend is older than `MIN_BACKEND` (can't speak the
+  /// v3 auth handoff), so the UI routes to the install/upgrade screen just as it
+  /// does for a missing backend. True when the backend is new enough, or when it's
+  /// present but its version couldn't be read (don't hide a working backend).
+  backend_supported: bool,
+  /// True when the backend speaks a *newer* wire protocol than this GUI's
+  /// `gp_protocol::PROTOCOL_MAX` — the inverse of too-old. The UI routes to the
+  /// "Update GP Client" screen (GPC-42) rather than the install/upgrade screen.
+  /// False for backends too old to advertise a protocol range (never too new).
+  backend_too_new: bool,
+  /// The manual "update this app" command, matched to how the GUI was installed
+  /// (Flatpak vs the native package manager) — the too-new screen's fallback.
+  gui_update_cmd: String,
   /// Per-OS install steps, so the UI can render and offer a manual override.
   install_options: Vec<system::InstallOption>,
 }
@@ -229,10 +252,31 @@ async fn system_info() -> SystemInfo {
   // own kind ("Flatpak"), so use the host-aware probe for the backend's package mgr.
   let kind = system::host_install_kind();
   let backend_version = system::backend_version();
-  let compatible = match &backend_version {
-    Some(v) => system::same_feature_version(v, system::GUI_VERSION),
+  // An installed-but-too-old backend can't drive the v3 auth handoff, so treat it
+  // like a missing backend. Unknown version (present but unreadable) stays true so
+  // we never hide a working backend behind the install screen.
+  let backend_supported = match &backend_version {
+    Some(v) => system::version_cmp(v, system::MIN_BACKEND) != std::cmp::Ordering::Less,
     None => true,
   };
+  // `installed` is the value the GUI actually gates on: in the Flatpak it's the
+  // D-Bus *activatability* of gpservice, not just whether the binary runs — so
+  // log both. A common mismatch: the binary probes fine but the service isn't
+  // activatable (e.g. the D-Bus daemon wasn't reloaded after an rpm-ostree
+  // apply-live), which shows the "backend required" screen.
+  let backend_installed = system::backend_installed();
+  // Too-new: the oldest protocol the backend speaks is newer than the newest this
+  // GUI understands, so they can't talk — update the GUI, not the backend. Old
+  // backends don't advertise a range (None), so they're never flagged too new.
+  let backend_too_new = system::backend_protocol().is_some_and(|(bmin, _)| bmin > gp_protocol::PROTOCOL_MAX);
+  match &backend_version {
+    Some(v) => tracing::info!(
+      "Backend gpservice {v}: installed(dbus-activatable)={backend_installed}, supported={backend_supported} (min {}), too_new={backend_too_new} (gui protocol_max={})",
+      system::MIN_BACKEND,
+      gp_protocol::PROTOCOL_MAX
+    ),
+    None => tracing::info!("No backend gpservice version from the host (installed(dbus-activatable)={backend_installed})"),
+  }
   SystemInfo {
     gui_version: system::GUI_VERSION.to_string(),
     os_name: system::os_pretty_name(),
@@ -240,9 +284,11 @@ async fn system_info() -> SystemInfo {
     install_kind: system::install_kind_str(kind).to_string(),
     is_flatpak: system::is_flatpak(),
     flatpak_runtime: system::flatpak_runtime(),
-    backend_installed: system::backend_installed(),
+    backend_installed,
     backend_version,
-    compatible,
+    backend_supported,
+    backend_too_new,
+    gui_update_cmd: system::gui_update_command(),
     install_options: {
       let v = system::latest_backend_release()
         .await
@@ -392,6 +438,45 @@ async fn remove_predecessor() -> Result<(), String> {
     .map_err(|e| e.to_string())?
 }
 
+/// Whether to show the "Import from GP Client" migration screen — gp-client is a
+/// fresh install and a predecessor gpgui with data is present.
+#[tauri::command]
+fn import_available() -> bool {
+  import::import_available()
+}
+
+/// Whether the predecessor gpgui *app* is still installed (vs. only its leftover
+/// data). Drives the import-screen copy: with the app present, importing also
+/// removes it; when only data lingers, the import keeps it (nothing to uninstall).
+#[tauri::command]
+fn predecessor_app_installed() -> bool {
+  import::predecessor_installed()
+}
+
+/// Refresh the in-memory vault + config from the just-imported files on disk, so
+/// the imported vault is recognised (unlock screen, not a fresh setup) and the
+/// imported settings (incl. auto-unlock) take effect immediately.
+fn reload_after_import(state: &AppState) {
+  let vault_path = config::vault_path().unwrap_or_else(|| std::path::PathBuf::from("identities.enc"));
+  *state.vault.lock().unwrap() = Vault::load(vault_path);
+  *state.cfg.lock().unwrap() = Config::load();
+}
+
+/// Import everything from gpgui (identities + all settings, incl. auto-unlock),
+/// then remove the old app and its data. The old app is only removed if the
+/// import succeeded first.
+#[tauri::command]
+async fn import_from_gpgui(state: State<'_, AppState>) -> Result<(), String> {
+  tauri::async_runtime::spawn_blocking(|| -> Result<(), String> {
+    import::import_now()?;
+    import::remove_predecessor()
+  })
+  .await
+  .map_err(|e| e.to_string())??;
+  reload_after_import(&state);
+  Ok(())
+}
+
 /// Update action. On Flatpak: download the new `.flatpak` from the release and
 /// reinstall it (no hosted/Flathub remote yet, so `flatpak update` can't pull
 /// it). On native: open the release to grab the new packages.
@@ -448,20 +533,6 @@ fn open_settings(app: tauri::AppHandle, section: Option<String>) -> Result<(), S
 fn save_settings(app: tauri::AppHandle, state: State<AppState>, form: SettingsForm) {
   {
     let mut c = state.cfg.lock().unwrap();
-    c.os = form.os;
-    c.user_agent = form.user_agent;
-    c.auth_view = form.auth_view;
-    c.mtu = form.mtu;
-    c.reconnect_timeout = form.reconnect_timeout;
-    c.force_dpd = form.force_dpd;
-    c.disable_ipv6 = form.disable_ipv6;
-    c.no_dtls = form.no_dtls;
-    c.no_xmlpost = form.no_xmlpost;
-    c.ignore_tls_errors = form.ignore_tls_errors;
-    c.vpnc_script = form.vpnc_script;
-    c.local_hostname = form.local_hostname;
-    c.os_version = form.os_version;
-    c.client_version = form.client_version;
     c.tray_icon = form.tray_icon;
     c.run_at_startup = form.run_at_startup;
     c.start_minimized = form.start_minimized;
@@ -506,16 +577,43 @@ fn set_remember_unlock(state: State<AppState>, enabled: bool) {
 
 /// Connect using a saved identity (from the unlocked vault). `portal` overrides
 /// the identity's portal when non-empty.
+/// Answer a mid-connect MFA challenge with a one-time code. The interactive
+/// challenge flow (gpservice surfacing `GatewayLogin::Mfa` over the transport and
+/// resubmitting) is tracked in GPS-16; until then this is a logged no-op so the
+/// UI's submit path exists. The push/tap-to-confirm variant is GPS-17.
+#[tauri::command]
+async fn submit_mfa(code: String) -> Result<(), String> {
+  dbus_client::submit_mfa(code).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn resend_mfa() -> Result<(), String> {
+  dbus_client::resend_mfa().await.map_err(|e| e.to_string())
+}
+
+/// Answer a mid-connect smart-card prompt: the PIN plus the certificate chosen in
+/// the connect-time picker (its `pkcs11:` URI, empty to keep the stored cert).
+#[tauri::command]
+fn submit_pin(state: State<AppState>, pin: String, cert_uri: Option<String>) -> Result<(), String> {
+  // Deliver the PIN + chosen cert to the connect pipeline waiting on the prompt.
+  match state.pin_tx.lock().unwrap().take() {
+    Some(tx) => {
+      let _ = tx.send(Some(vpn::PinReply { pin, cert_uri: cert_uri.unwrap_or_default() }));
+      Ok(())
+    }
+    None => Err("no PIN prompt is active".into()),
+  }
+}
+
 #[tauri::command]
 fn connect(state: State<AppState>, identity: String, portal: String) -> Result<(), String> {
-  start_connect(&state.vault, &state.cfg, &state.cmd_tx, &identity, &portal)
+  start_connect(&state.vault, &state.cmd_tx, &identity, &portal)
 }
 
 /// Build a connect request from a saved identity and hand it to the VPN manager.
 /// Shared by the `connect` command and the tray's "Connect with" submenu.
 pub(crate) fn start_connect(
   vault: &Arc<Mutex<Vault>>,
-  cfg: &Arc<Mutex<Config>>,
   cmd_tx: &std::sync::mpsc::Sender<UiCommand>,
   identity: &str,
   portal: &str,
@@ -538,23 +636,22 @@ pub(crate) fn start_connect(
     portal.trim().to_string()
   };
 
-  // os / user-agent / SSO method / CLI options come from the settings window.
-  let (os, user_agent, use_browser, opts) = {
-    let c = cfg.lock().unwrap();
-    let opts = connect::ConnOpts {
-      mtu: c.mtu,
-      reconnect_timeout: c.reconnect_timeout,
-      force_dpd: c.force_dpd,
-      disable_ipv6: c.disable_ipv6,
-      no_dtls: c.no_dtls,
-      no_xmlpost: c.no_xmlpost,
-      ignore_tls_errors: c.ignore_tls_errors,
-      vpnc_script: c.vpnc_script.clone(),
-      local_hostname: c.local_hostname.clone(),
-      os_version: c.os_version.clone(),
-      client_version: c.client_version.clone(),
-    };
-    (c.os.clone(), c.user_agent.clone(), c.auth_view == "browser", opts)
+  // os / user-agent / SSO method / CLI tuning are all per-identity now.
+  let os = id.os.clone();
+  let user_agent = id.user_agent.clone();
+  let use_browser = id.auth_view == "browser";
+  let opts = connect::ConnOpts {
+    mtu: id.mtu,
+    reconnect_timeout: id.reconnect_timeout,
+    force_dpd: id.force_dpd,
+    disable_ipv6: id.disable_ipv6,
+    no_dtls: id.no_dtls,
+    no_xmlpost: id.no_xmlpost,
+    ignore_tls_errors: id.ignore_tls_errors,
+    vpnc_script: id.vpnc_script.clone(),
+    local_hostname: id.local_hostname.clone(),
+    os_version: id.os_version.clone(),
+    client_version: id.client_version.clone(),
   };
 
   let cert_kind = match id.auth_method {
@@ -583,6 +680,7 @@ pub(crate) fn start_connect(
     key_password: id.key_password,
     username: id.username,
     password: id.password,
+    dns_domains: id.dns_domains,
     opts,
   };
   cmd_tx.send(UiCommand::Connect(params)).map_err(|e| e.to_string())
@@ -600,14 +698,30 @@ struct ProbeForm {
   key_file: String,
   key_password: String,
   module_path: String,
+  #[serde(default = "default_true")]
+  as_gateway: bool,
+  /// Reported client identity for the probe — sent by the per-identity editor.
+  #[serde(default)]
+  os: String,
+  #[serde(default)]
+  user_agent: String,
+}
+
+fn default_true() -> bool {
+  true
 }
 
 /// Probe the portal's prelogin to discover the required auth method.
 #[tauri::command]
 async fn probe_auth(state: State<'_, AppState>, form: ProbeForm) -> Result<connect::ProbeResult, String> {
+  // Prefer the editor's in-form values (per-identity); fall back to the last
+  // global values for older callers that don't send them.
   let (os, user_agent) = {
     let c = state.cfg.lock().unwrap();
-    (c.os.clone(), c.user_agent.clone())
+    (
+      if form.os.trim().is_empty() { c.os.clone() } else { form.os.clone() },
+      if form.user_agent.trim().is_empty() { c.user_agent.clone() } else { form.user_agent.clone() },
+    )
   };
   let (certificate, sslkey, key_password) = match form.cert_kind {
     1 => {
@@ -629,7 +743,7 @@ async fn probe_auth(state: State<'_, AppState>, form: ProbeForm) -> Result<conne
     ),
     _ => (None, None, None),
   };
-  Ok(connect::probe(form.portal.trim(), &os, &user_agent, certificate, sslkey, key_password, false).await)
+  Ok(connect::probe(form.portal.trim(), &os, &user_agent, certificate, sslkey, key_password, false, form.as_gateway).await)
 }
 
 #[tauri::command]
@@ -646,12 +760,37 @@ fn refresh_tray(tray: &Arc<Mutex<Option<Arc<tray::TrayHandle>>>>) {
   }
 }
 
+/// One-time migration: copy the formerly-global connection/SSO settings onto
+/// every stored identity, then mark it done on `Config`. No-op once done, or
+/// while the vault is locked (it retries after a real unlock). Runs after every
+/// unlock/first-PIN path so an upgrading user keeps their tuning per identity.
+fn migrate_conn_to_identity(vault: &Arc<Mutex<Vault>>, cfg: &Arc<Mutex<Config>>) {
+  let snapshot = {
+    let c = cfg.lock().unwrap();
+    if c.conn_migrated_to_identity {
+      return;
+    }
+    c.clone()
+  };
+  {
+    let mut v = vault.lock().unwrap();
+    if !v.unlocked {
+      return; // retry after a real unlock; leave the flag unset for now
+    }
+    let _ = v.seed_all_connection_from_config(&snapshot);
+  }
+  let mut c = cfg.lock().unwrap();
+  c.conn_migrated_to_identity = true;
+  c.save();
+}
+
 #[tauri::command]
 fn set_master_pin(state: State<AppState>, pin: String) -> Result<(), String> {
   state.vault.lock().unwrap().set_master_pin(&pin).map_err(|e| e.to_string())?;
   if state.cfg.lock().unwrap().remember_unlock {
     secrets::store_pin(&pin);
   }
+  migrate_conn_to_identity(&state.vault, &state.cfg);
   refresh_tray(&state.tray);
   Ok(())
 }
@@ -663,6 +802,7 @@ fn unlock_vault(state: State<AppState>, pin: String) -> Result<(), String> {
   if state.cfg.lock().unwrap().remember_unlock {
     secrets::store_pin(&pin);
   }
+  migrate_conn_to_identity(&state.vault, &state.cfg);
   refresh_tray(&state.tray);
   Ok(())
 }
@@ -707,20 +847,26 @@ fn delete_identity(app: tauri::AppHandle, state: State<AppState>, name: String) 
   Ok(())
 }
 
-/// Open (or focus) the Identities manager window.
+/// Open (or focus) the single-identity editor window, targeting `name` (an
+/// existing identity) or a new one when omitted. Shares the `manager` window;
+/// the target is stashed before load (cold open) or pushed via an event (open).
 #[tauri::command]
-fn open_manager(app: tauri::AppHandle) -> Result<(), String> {
+fn open_identity_editor(app: tauri::AppHandle, name: Option<String>) -> Result<(), String> {
+  let target = name.unwrap_or_default();
   if let Some(w) = app.get_webview_window("manager") {
+    let _ = w.emit("edit-identity", target);
     let _ = w.set_focus();
     return Ok(());
   }
+  let js = format!("window.__editIdentity = {};", serde_json::to_string(&target).unwrap_or_default());
   tauri::WebviewWindowBuilder::new(&app, "manager", tauri::WebviewUrl::App("manager.html".into()))
-    .title("Identities")
-    .inner_size(720.0, 620.0)
-    .min_inner_size(720.0, 620.0)
+    .title("Identity")
+    .inner_size(600.0, 640.0)
+    .min_inner_size(600.0, 640.0)
     .resizable(false)
     .decorations(false)
     .transparent(true)
+    .initialization_script(&js)
     .build()
     .map_err(|e| e.to_string())?;
   Ok(())
@@ -734,6 +880,12 @@ fn main() {
     )
     .init();
 
+  tracing::info!(
+    "GP Client {} starting ({})",
+    system::GUI_VERSION,
+    if system::is_flatpak() { "flatpak" } else { "native" }
+  );
+
   // Single-instance guard — the very first thing, before any GTK/Tauri init. If
   // another instance is already running this signals it to reveal its window and
   // exits; otherwise we hold the listener and service "show" pings in `setup`.
@@ -741,9 +893,9 @@ fn main() {
   // D-Bus-based plugin didn't) and prevents the relaunch-crash entirely.
   let instance_listener = single_instance::acquire_or_signal();
 
-  // First run only: silently import settings from the predecessor GUI (gpgui).
-  // Runs before the config/vault are loaded, so the imported files are picked up.
-  import::run();
+  // Migration from the predecessor gpgui is now user-driven: the frontend shows
+  // the "Import from GP Client" screen when `import_available()` is true and calls
+  // `import_from_gpgui` on confirm (see import.rs).
 
   let cfg = Arc::new(Mutex::new(Config::load()));
   // Keep the autostart entry in sync with the preferences (which default on). On
@@ -767,7 +919,11 @@ fn main() {
       let _ = vault.lock().unwrap().unlock(&pin);
     }
   }
+  // Seed per-identity connection settings from the old globals on first run
+  // after upgrading (no-op if already migrated or still locked).
+  migrate_conn_to_identity(&vault, &cfg);
   let (cmd_tx, cmd_rx) = std::sync::mpsc::channel::<UiCommand>();
+  let pin_slot: vpn::PinSlot = Arc::new(Mutex::new(None));
 
   let tray_available = Arc::new(AtomicBool::new(false));
   let tray_slot: Arc<Mutex<Option<Arc<tray::TrayHandle>>>> = Arc::new(Mutex::new(None));
@@ -776,6 +932,7 @@ fn main() {
 
   let app_state = AppState {
     cmd_tx: cmd_tx.clone(),
+    pin_tx: pin_slot.clone(),
     shared: shared.clone(),
     cfg: cfg.clone(),
     vault: vault.clone(),
@@ -791,6 +948,7 @@ fn main() {
   let setup_tray_available = tray_available.clone();
   let setup_tray_slot = tray_slot.clone();
   let setup_frame = frame.clone();
+  let setup_pin_slot = pin_slot.clone();
   let cmd_rx = Mutex::new(Some(cmd_rx));
 
   // Moved into setup so the accept loop can hold the AppHandle.
@@ -831,6 +989,9 @@ fn main() {
       reboot_host,
       predecessor_removable,
       remove_predecessor,
+      import_available,
+      predecessor_app_installed,
+      import_from_gpgui,
       open_settings,
       save_settings,
       probe_auth,
@@ -842,7 +1003,10 @@ fn main() {
       list_identities,
       save_identity,
       delete_identity,
-      open_manager
+      open_identity_editor,
+      submit_mfa,
+      resend_mfa,
+      submit_pin
     ])
     .setup(move |app| {
       let handle = app.handle().clone();
@@ -969,7 +1133,7 @@ fn main() {
 
       let notifier = Notifier::new(setup_shared.clone(), tray_handle, on_change);
       let rx = cmd_rx.lock().unwrap().take().expect("setup runs once");
-      std::thread::spawn(move || vpn::run(rx, notifier, handle));
+      std::thread::spawn(move || vpn::run(rx, notifier, handle, setup_pin_slot));
 
       // Background: notify once on launch if a newer release is out. This covers
       // the start-hidden case, where the in-window update banner isn't visible.

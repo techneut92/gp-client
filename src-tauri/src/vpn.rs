@@ -41,6 +41,9 @@ pub struct ConnectParams {
   /// Standard username/password (auth_method == 3).
   pub username: String,
   pub password: String,
+  /// Scoped-DNS opt-in: domains that should resolve through the VPN's DNS
+  /// (empty = all DNS through the VPN, the default).
+  pub dns_domains: Vec<String>,
   /// Advanced connection options (settings window).
   pub opts: ConnOpts,
 }
@@ -81,6 +84,7 @@ impl Notifier {
   /// desktop notification on the connect / disconnect / error transitions.
   fn set_status(&self, generation: u64, status: Status) {
     let mut notify: Option<(String, String)> = None;
+    let mut smartcard_check: Option<String> = None;
     {
       let mut s = self.shared.lock().unwrap();
       if s.current_gen != generation {
@@ -104,6 +108,11 @@ impl Notifier {
         };
         notify = Some(("GP Client connected".into(), format!("Connected to {portal}")));
       } else if was_active && matches!(status, Status::Disconnected) {
+        // An unexpected end of a smart-card session is most often the card
+        // being removed — the hourly HIP recheck then can't present the client
+        // cert and the portal logs the session out. Defer the (blocking) card
+        // scan until after the lock is released.
+        smartcard_check = (!s.user_disconnect).then(|| s.smartcard_module.clone()).flatten();
         notify = Some(("GP Client disconnected".into(), "The VPN connection has ended".into()));
       } else if let Status::Error(e) = &status {
         if was_active {
@@ -112,11 +121,84 @@ impl Notifier {
       }
 
       s.status = status;
+      // Any status change ends an active MFA challenge (the MfaChallenge state
+      // itself doesn't go through set_status).
+      s.mfa_required = false;
+      s.mfa_prompt.clear();
+    }
+    // Off-lock: if a smart-card session ended unexpectedly, check whether the
+    // card is still readable. If not, say so — both in the notification and the
+    // status line — instead of a bare "connection ended".
+    if let Some(module) = smartcard_check {
+      let card_gone = crate::pkcs11::enumerate(&module).map(|c| c.is_empty()).unwrap_or(true);
+      if card_gone {
+        let msg = "Smart card not found — the VPN session ended. Re-insert your card and reconnect.";
+        notify = Some(("GP Client disconnected".into(), msg.into()));
+        self.shared.lock().unwrap().log = msg.into();
+      }
     }
     if let Some((summary, body)) = notify {
       notify_desktop(summary, body);
     }
     self.refresh();
+  }
+
+  /// Show/clear the inline smart-card PIN prompt. `Some((mfr, module))` shows it —
+  /// `mfr` (may be "") drives the subtitle and the card block's label, `module`
+  /// (PKCS#11 module file name, may be "") the card block's sub-line; `None`
+  /// clears it.
+  fn set_pin_challenge(&self, generation: u64, card: Option<(String, String)>) {
+    {
+      let mut s = self.shared.lock().unwrap();
+      if s.current_gen != generation {
+        return;
+      }
+      match card {
+        Some((mfr, module)) => {
+          s.pin_required = true;
+          s.pin_prompt = mfr;
+          s.pin_module = module;
+        }
+        None => {
+          s.pin_required = false;
+          s.pin_prompt = String::new();
+          s.pin_module = String::new();
+        }
+      }
+    }
+    self.refresh();
+  }
+
+  /// Show/clear the inline MFA challenge card from the backend's MfaChallenge
+  /// state. `Some(prompt)` shows it; `None` clears it.
+  fn set_mfa_challenge(&self, generation: u64, prompt: Option<String>) {
+    {
+      let mut s = self.shared.lock().unwrap();
+      if s.current_gen != generation {
+        return;
+      }
+      s.mfa_required = prompt.is_some();
+      s.mfa_prompt = prompt.unwrap_or_default();
+    }
+    self.refresh();
+  }
+
+  /// Start of a new connection: clear the user-disconnect flag and record the
+  /// smart-card module (if this connection uses one) so an unexpected end can
+  /// be diagnosed.
+  fn begin_connection(&self, generation: u64, smartcard_module: Option<String>) {
+    let mut s = self.shared.lock().unwrap();
+    if s.current_gen != generation {
+      return;
+    }
+    s.user_disconnect = false;
+    s.smartcard_module = smartcard_module;
+  }
+
+  /// Mark the imminent teardown as user-initiated (so it isn't diagnosed as an
+  /// unexpected smart-card loss).
+  fn mark_user_disconnect(&self) {
+    self.shared.lock().unwrap().user_disconnect = true;
   }
 
   fn log(&self, line: &str) {
@@ -144,7 +226,22 @@ impl Notifier {
   }
 }
 
-pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHandle) {
+/// What `submit_pin` sends back from the inline connect prompt: the entered PIN
+/// plus the certificate the user chose in the connect-time picker (its `pkcs11:`
+/// URI). `cert_uri` is empty when the picker wasn't used, in which case the
+/// identity's stored cert is kept.
+#[derive(Debug, Clone, Default)]
+pub struct PinReply {
+  pub pin: String,
+  pub cert_uri: String,
+}
+
+/// A parked smart-card prompt: the connect pipeline stores a oneshot sender here
+/// while the inline PIN + cert picker is shown; `submit_pin` resolves it with the
+/// PIN and chosen cert, `disconnect` resolves it with `None` (cancel).
+pub type PinSlot = Arc<Mutex<Option<tokio::sync::oneshot::Sender<Option<PinReply>>>>>;
+
+pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHandle, pin_slot: PinSlot) {
   let rt = match tokio::runtime::Runtime::new() {
     Ok(rt) => rt,
     Err(e) => {
@@ -162,6 +259,9 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHa
     match cmd {
       UiCommand::Connect(params) => {
         let generation = notifier.bump();
+        let smartcard_module =
+          (params.cert_kind == 1 && !params.module_path.is_empty()).then(|| params.module_path.clone());
+        notifier.begin_connection(generation, smartcard_module);
         notifier.set_status(generation, Status::Connecting);
 
         // Tear down any previous connection first.
@@ -169,7 +269,7 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHa
           rt.block_on(async { let _ = h.send_disconnect().await; });
         }
 
-        match rt.block_on(connect(&params, &notifier, generation, &app_handle)) {
+        match rt.block_on(connect(&params, &notifier, generation, &app_handle, &pin_slot)) {
           Ok(h) => handle = Some(h),
           // `{:#}` includes the full anyhow context chain (e.g. "single sign-on
           // was cancelled or failed: …") so the user sees the real reason.
@@ -178,6 +278,7 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHa
       }
       UiCommand::Disconnect => {
         let generation = notifier.bump();
+        notifier.mark_user_disconnect();
         notifier.set_status(generation, Status::Disconnecting);
         if let Some(h) = handle.take() {
           rt.block_on(async { let _ = h.send_disconnect().await; });
@@ -188,11 +289,46 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHa
   }
 }
 
+/// Show the inline PIN prompt in the connecting view and await the entered PIN.
+/// The prelogin mTLS runs in the root backend (no display), so a smart-card
+/// identity without a stored PIN collects it here — now inline in the main
+/// window instead of a separate popup. Parks a oneshot sender in `pin_slot`;
+/// `submit_pin` resolves it with the PIN, `disconnect` with `None` (cancel).
+/// The PIN is used once (in the cert URI) and never written to disk.
+async fn prompt_pin_inline(notifier: &Notifier, generation: u64, pin_slot: &PinSlot, mfr: String, module: String) -> Option<PinReply> {
+  let (tx, rx) = tokio::sync::oneshot::channel::<Option<PinReply>>();
+  *pin_slot.lock().unwrap() = Some(tx);
+  notifier.set_pin_challenge(generation, Some((mfr, module)));
+  let reply = rx.await.unwrap_or(None);
+  notifier.set_pin_challenge(generation, None);
+  reply
+}
+
+/// The smart-card manufacturer behind a `pkcs11:` cert URI (built from the
+/// identity's stored cert manufacturer), for the PIN-prompt subtitle and card
+/// label. Empty when absent — the UI then shows a generic prompt. The UI
+/// localises the phrasing.
+fn card_label(cert_uri: &str) -> String {
+  cert_uri
+    .trim_start_matches("pkcs11:")
+    .split(';')
+    .find_map(|kv| kv.strip_prefix("manufacturer="))
+    .map(str::trim)
+    .unwrap_or_default()
+    .to_string()
+}
+
+/// The PKCS#11 module file name (e.g. "opensc-pkcs11.so") from its path, for the
+/// PIN prompt's card sub-line. Empty when no module is configured.
+fn module_basename(module_path: &str) -> String {
+  module_path.rsplit('/').next().unwrap_or_default().to_string()
+}
+
 /// The full v2 connect pipeline. Returns the live transport on success.
-async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_handle: &tauri::AppHandle) -> Result<Transport> {
-  if !p.as_gateway {
-    bail!("Only 'connect directly as gateway' is supported in this build");
-  }
+async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_handle: &tauri::AppHandle, pin_slot: &PinSlot) -> Result<Transport> {
+  // Portal mode (as_gateway == false) is handled by the backend: it runs the
+  // portal prelogin, retrieves the gateway list, and logs into the chosen
+  // gateway with the portal cookie. Requires a backend that speaks protocol v5.
 
   // Resolve the client certificate (cert axis) independently of the credential
   // (SAML vs password). The credential is decided downstream: username/password
@@ -200,29 +336,36 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
   let opt = |s: &String| (!s.is_empty()).then(|| s.clone());
   let (certificate, sslkey, key_password) = match p.cert_kind {
     1 => {
-      if p.cert_uri.is_empty() {
-        bail!("Select a smart-card certificate");
-      }
-      // Honour the chosen PKCS#11 module for the GUI-side prelogin.
+      // Honour the chosen PKCS#11 module for the GUI-side prelogin and for the
+      // connect prompt's token scan.
       if !p.module_path.is_empty() {
         // SAFETY: set before the auth runs; the GUI is single-connection.
         unsafe { std::env::set_var("GP_PKCS11_MODULE", &p.module_path) };
       }
-      // PIN: the identity's stored PIN if set, else prompt for it (used once,
-      // never persisted). The root backend can't pop a pinentry, so we collect
-      // it here and pass it in the cert URI.
-      let pin = if p.pin.is_empty() {
-        match crate::pin::prompt(app_handle).await? {
-          Some(pin) => pin,
-          None => bail!("Smart-card PIN entry cancelled"),
+      // When the PIN isn't stored we prompt inline — and that prompt also carries
+      // a certificate picker, so a stored cert can be re-picked and an unstored
+      // one (Store certificate off) is chosen here rather than failing the
+      // connect. The PIN/cert are used once (in the cert URI), never persisted.
+      let (cert_uri, pin) = if p.pin.is_empty() {
+        match prompt_pin_inline(notifier, generation, pin_slot, card_label(&p.cert_uri), module_basename(&p.module_path)).await {
+          Some(r) => {
+            // Empty cert_uri → the picker wasn't used; keep the stored cert.
+            let uri = if r.cert_uri.is_empty() { p.cert_uri.clone() } else { r.cert_uri };
+            (uri, r.pin)
+          }
+          None => bail!("Smart-card connect cancelled"),
         }
       } else {
-        p.pin.clone()
+        // A stored PIN implies a stored cert — connect silently with both.
+        (p.cert_uri.clone(), p.pin.clone())
       };
+      if cert_uri.is_empty() {
+        bail!("No smart-card certificate selected");
+      }
       let cert = if pin.is_empty() {
-        p.cert_uri.clone()
+        cert_uri
       } else {
-        format!("{}?pin-value={}", p.cert_uri, pin)
+        format!("{}?pin-value={}", cert_uri, pin)
       };
       (cert, None, None)
     }
@@ -247,6 +390,8 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
     username,
     password,
     use_browser: p.use_browser,
+    as_gateway: p.as_gateway,
+    dns_domains: p.dns_domains.clone(),
     opts: p.opts.clone(),
   };
 
@@ -285,6 +430,9 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
           }
         }
         VpnState::Connecting(_) => n.set_status(generation, Status::Connecting),
+        // Interactive MFA/token challenge: keep the (already Connecting) status
+        // and surface the prompt inline.
+        VpnState::MfaChallenge(info) => n.set_mfa_challenge(generation, Some(info.message().to_string())),
         // Keep the connection details — the session survives the reconnect.
         VpnState::Reconnecting(_) => n.set_status(generation, Status::Reconnecting),
         VpnState::Disconnecting => n.set_status(generation, Status::Disconnecting),

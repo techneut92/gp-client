@@ -34,9 +34,58 @@ pub struct Identity {
   pub pin: String,
   pub cert_id: String,
   pub cert_manufacturer: String,
+  /// Smart-card only. When true the certificate is **not** stored on the identity
+  /// — the user picks it at connect time from the token. Default false (stored).
+  pub ask_cert: bool,
+  /// Smart-card only, meaningful only when the cert is stored. When true the PIN is
+  /// **not** stored — the user enters it at connect time. Default false (stored).
+  pub ask_pin: bool,
   pub cert_file: String,
   pub key_file: String,
   pub key_password: String,
+  /// Scoped-DNS opt-in: when non-empty, only these domains resolve through the
+  /// VPN's DNS servers (needs a backend that understands protocol v4).
+  pub dns_domains: Vec<String>,
+
+  // ---- SSO + per-connection tuning (moved from the global settings window) ----
+  /// SSO method: "webview" (embedded) or "browser" (system browser).
+  pub auth_view: String,
+  pub os: String,
+  pub os_version: String,
+  pub user_agent: String,
+  pub client_version: String,
+  pub mtu: u32,
+  pub reconnect_timeout: u32,
+  pub force_dpd: u32,
+  /// Empty string = unset.
+  pub vpnc_script: String,
+  pub local_hostname: String,
+  pub disable_ipv6: bool,
+  pub no_dtls: bool,
+  pub no_xmlpost: bool,
+  pub ignore_tls_errors: bool,
+}
+
+impl Identity {
+  /// One-time migration seed: copy the (formerly global) connection/SSO settings
+  /// off `Config` onto this identity. Only meaningful for identities created
+  /// before these fields moved per-identity; new ones carry their own values.
+  pub fn seed_connection_from_config(&mut self, c: &crate::config::Config) {
+    self.auth_view = c.auth_view.clone();
+    self.os = c.os.clone();
+    self.os_version = c.os_version.clone();
+    self.user_agent = c.user_agent.clone();
+    self.client_version = c.client_version.clone();
+    self.mtu = c.mtu;
+    self.reconnect_timeout = c.reconnect_timeout;
+    self.force_dpd = c.force_dpd;
+    self.vpnc_script = c.vpnc_script.clone();
+    self.local_hostname = c.local_hostname.clone();
+    self.disable_ipv6 = c.disable_ipv6;
+    self.no_dtls = c.no_dtls;
+    self.no_xmlpost = c.no_xmlpost;
+    self.ignore_tls_errors = c.ignore_tls_errors;
+  }
 }
 
 pub struct Vault {
@@ -142,6 +191,15 @@ impl Vault {
 
   pub fn remove(&mut self, name: &str) -> Result<()> {
     self.identities.retain(|i| i.name != name);
+    self.save()
+  }
+
+  /// Migration: seed the formerly-global connection/SSO settings onto every
+  /// stored identity and persist. Requires an unlocked vault.
+  pub fn seed_all_connection_from_config(&mut self, c: &crate::config::Config) -> Result<()> {
+    for id in &mut self.identities {
+      id.seed_connection_from_config(c);
+    }
     self.save()
   }
 

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.techneut92.GPClient</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>GP Client</name>
+  <summary>Connect to GlobalProtect VPN with a smart card, SSO or password</summary>
+  <summary xml:lang="nl">Verbind met GlobalProtect-VPN met een smartcard, SSO of wachtwoord</summary>
+  <summary xml:lang="fy">Ferbyn mei GlobalProtect-VPN mei in smartcard, SSO of wachtwurd</summary>
+
+  <description>
+    <p>
+      A graphical client for GlobalProtect VPN. Sign in with a smart card /
+      PKCS#11 certificate (such as a YubiKey PIV), SAML single sign-on, or a
+      username and password.
+    </p>
+    <p xml:lang="nl">
+      Een grafische client voor GlobalProtect-VPN. Log in met een smartcard /
+      PKCS#11-certificaat (zoals een YubiKey PIV), SAML single sign-on, of een
+      gebruikersnaam en wachtwoord.
+    </p>
+    <p xml:lang="fy">
+      In grafyske client foar GlobalProtect-VPN. Meld jo oan mei in smartcard /
+      PKCS#11-sertifikaat (lykas in YubiKey PIV), SAML single sign-on, of in
+      brûkersnamme en wachtwurd.
+    </p>
+    <p>
+      Save multiple connections in an encrypted vault, unlock it from your
+      keyring, and manage the VPN from a system-tray icon with desktop
+      notifications.
+    </p>
+    <p xml:lang="nl">
+      Bewaar meerdere verbindingen in een versleutelde kluis, ontgrendel die met
+      je sleutelring, en beheer de VPN vanuit een systeemvakpictogram met
+      bureaubladmeldingen.
+    </p>
+    <p xml:lang="fy">
+      Bewarje meardere ferbiningen yn in fersifere klûs, ûntskoattelje dy mei jo
+      kaairing, en behear de VPN fanút in systeemfakikoan mei buroblêdmeldingen.
+    </p>
+    <p>
+      The privileged backend (gpservice) is installed separately as a host
+      package and reached over D-Bus; the in-app screen guides that install.
+    </p>
+    <p xml:lang="nl">
+      De geprivilegieerde backend (gpservice) wordt apart geïnstalleerd als
+      hostpakket en via D-Bus benaderd; het scherm in de app begeleidt die
+      installatie.
+    </p>
+    <p xml:lang="fy">
+      De privilegearre backend (gpservice) wurdt apart ynstallearre as
+      hostpakket en fia D-Bus berikt; it skerm yn de app begeliedt dy
+      ynstallaasje.
+    </p>
+    <p>
+      This is an early release: the smart-card / PKCS#11 sign-in path is used
+      daily, but several flows are still lightly tested.
+    </p>
+    <p xml:lang="nl">
+      Dit is een vroege release: de smartcard- / PKCS#11-aanmelding wordt dagelijks
+      gebruikt, maar diverse andere stromen zijn nog beperkt getest.
+    </p>
+    <p xml:lang="fy">
+      Dit is in iere release: it smartcard- / PKCS#11-oanmelden wurdt deistich
+      brûkt, mar ferskate oare streamen binne noch beheind test.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.techneut92.GPClient.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Connect to a GlobalProtect gateway</caption>
+      <caption xml:lang="nl">Verbind met een GlobalProtect-gateway</caption>
+      <caption xml:lang="fy">Ferbyn mei in GlobalProtect-gateway</caption>
+      <image>https://raw.githubusercontent.com/techneut92/gp-client/main/docs/screenshots/main_disconnected.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Manage saved connections in an encrypted vault</caption>
+      <caption xml:lang="nl">Beheer opgeslagen verbindingen in een versleutelde kluis</caption>
+      <caption xml:lang="fy">Behear bewarre ferbiningen yn in fersifere klûs</caption>
+      <image>https://raw.githubusercontent.com/techneut92/gp-client/main/docs/screenshots/settings_identities.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Edit an identity: certificate, authentication and connection settings</caption>
+      <caption xml:lang="nl">Een identiteit bewerken: certificaat, authenticatie en verbindingsinstellingen</caption>
+      <caption xml:lang="fy">In identiteit bewurkje: sertifikaat, autentikaasje en ferbiningsynstellingen</caption>
+      <image>https://raw.githubusercontent.com/techneut92/gp-client/main/docs/screenshots/identities_new_edit.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Create an encrypted vault with a master PIN</caption>
+      <caption xml:lang="nl">Maak een versleutelde kluis met een hoofdpincode</caption>
+      <caption xml:lang="fy">Meitsje in fersifere klûs mei in haadpinkoade</caption>
+      <image>https://raw.githubusercontent.com/techneut92/gp-client/main/docs/screenshots/vault_new.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Settings and About</caption>
+      <caption xml:lang="nl">Instellingen en Over</caption>
+      <caption xml:lang="fy">Ynstellingen en Oer</caption>
+      <image>https://raw.githubusercontent.com/techneut92/gp-client/main/docs/screenshots/settings_about.png</image>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>Network</category>
+    <category>Security</category>
+  </categories>
+
+  <keywords>
+    <keyword>VPN</keyword>
+    <keyword>GlobalProtect</keyword>
+    <keyword>OpenConnect</keyword>
+    <keyword>PKCS11</keyword>
+    <keyword>YubiKey</keyword>
+  </keywords>
+
+  <url type="homepage">https://github.com/techneut92/gp-client</url>
+  <url type="bugtracker">https://github.com/techneut92/gp-client/issues</url>
+  <url type="donation">https://ko-fi.com/techneut92</url>
+
+  <developer id="io.github.techneut92">
+    <name>Dylan Westra</name>
+  </developer>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.5.0" date="2026-07-19">
+      <description>
+        <p>New independent GP Client GUI: connect, identity manager, settings and About; smart-card, SAML (embedded or system browser) and password sign-in over the gpservice backend.</p>
+      </description>
+    </release>
+  </releases>
+</component>

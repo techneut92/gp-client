@@ -80,6 +80,11 @@ pub struct Config {
   /// Remember the vault master PIN in the desktop secret store (Secret Service)
   /// and auto-unlock on launch. Off by default.
   pub remember_unlock: bool,
+  /// One-time migration marker: once true, the connection/SSO settings above
+  /// have been copied onto each stored identity (they are now edited per
+  /// identity). The `os`/`user_agent`/`auth_view`/mtu/... fields on `Config`
+  /// remain only as the migration source and are no longer read at connect.
+  pub conn_migrated_to_identity: bool,
 }
 
 impl Default for Config {
@@ -111,6 +116,7 @@ impl Default for Config {
       run_at_startup: true,
       start_minimized: false,
       remember_unlock: false,
+      conn_migrated_to_identity: false,
     }
   }
 }

@@ -19,6 +19,10 @@ trait GpService {
   async fn probe(&self, request: String) -> zbus::Result<String>;
   /// v3 handoff: authenticate with a captured credential and start the tunnel.
   async fn connect_auth(&self, request: String) -> zbus::Result<()>;
+  /// v4: answer an interactive MFA/token challenge with the one-time code.
+  async fn submit_mfa(&self, code: String) -> zbus::Result<()>;
+  /// v4: re-request the MFA challenge.
+  async fn resend_mfa(&self) -> zbus::Result<()>;
 
   #[zbus(signal)]
   fn vpn_state_changed(&self, state: String) -> zbus::Result<()>;
@@ -48,6 +52,30 @@ impl DbusHandle {
     self.proxy().await?.connect_auth(request).await?;
     Ok(())
   }
+}
+
+async fn connect_bus() -> Result<zbus::Connection> {
+  Ok(if std::env::var("GP_DBUS_SESSION").is_ok() {
+    zbus::Connection::session().await?
+  } else {
+    zbus::Connection::system().await?
+  })
+}
+
+/// Answer the backend's interactive MFA challenge with the one-time code. A
+/// short-lived call (the connect pipeline is parked on the backend awaiting it),
+/// so it doesn't go through the VPN manager.
+pub async fn submit_mfa(code: String) -> Result<()> {
+  let conn = connect_bus().await?;
+  GpServiceProxy::new(&conn).await?.submit_mfa(code).await?;
+  Ok(())
+}
+
+/// Ask the backend to re-request the MFA challenge.
+pub async fn resend_mfa() -> Result<()> {
+  let conn = connect_bus().await?;
+  GpServiceProxy::new(&conn).await?.resend_mfa().await?;
+  Ok(())
 }
 
 /// Connect to gpservice over D-Bus and stream `VpnState` changes. Uses the

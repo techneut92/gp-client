@@ -4,7 +4,7 @@
   "version": "1.5.0",
   "identifier": "io.github.techneut92.GPClient",
   "build": {
-    "frontendDist": "../dist",
+    "frontendDist": "../ui/dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build"
@@ -17,7 +17,7 @@
         "label": "main",
         "title": "GP Client",
         "width": 460,
-        "height": 876,
+        "height": 822,
         "minWidth": 460,
         "minHeight": 822,
         "maxWidth": 460,
@@ -43,10 +43,10 @@
     ],
     "linux": {
       "deb": {
-        "desktopTemplate": "packaging/linux/gp-client.desktop"
+        "desktopTemplate": "../packaging/linux/gp-client.desktop"
       },
       "rpm": {
-        "desktopTemplate": "packaging/linux/gp-client.desktop"
+        "desktopTemplate": "../packaging/linux/gp-client.desktop"
       }
     }
   }

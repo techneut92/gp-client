@@ -17,8 +17,18 @@ use std::process::Command;
 const GUI_REPO: &str = "techneut92/gp-client";
 /// Backend (gpservice) releases — the GlobalProtect-openconnect-dw fork.
 const BACKEND_REPO: &str = "techneut92/GlobalProtect-openconnect-dw";
-/// Backend version installed when the fork's latest release can't be fetched.
-pub const BACKEND_FALLBACK_VERSION: &str = "1.3.0";
+/// Version to install when the GitHub *API* can't tell us the latest release
+/// (`api.github.com` is rate-limited to 60 req/h unauthenticated, so a 403 is
+/// common even with a working connection). The install download itself hits the
+/// release CDN, which has no such limit, so this best-effort guess still yields a
+/// working install URL. Build-time constant — bump it each release so it doesn't
+/// drift. Must be >= `MIN_BACKEND` so the fallback is always a usable backend.
+pub const BACKEND_FALLBACK_VERSION: &str = "1.4.0";
+/// The oldest backend gp-client can connect through. The connect path uses the
+/// v3 auth handoff (gpservice runs prelogin/auth itself over the wire), which
+/// first shipped in the fork's 1.3.1; anything older can't answer `probe` /
+/// `authenticate`, so it's treated like a missing backend (→ install screen).
+pub const MIN_BACKEND: &str = "1.3.1";
 const FLATPAK_ID: &str = "io.github.techneut92.GPClient";
 pub const GUI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -87,6 +97,40 @@ pub fn run_mode() -> &'static str {
     }
   }
   "Unknown"
+}
+
+/// The manual command that updates *this app* (not the backend), matched to how
+/// the GUI itself was installed — Flatpak vs a native package manager. Shown as
+/// the "or update manually" fallback on the backend-too-new screen (GPC-42).
+///
+/// There's no Flatpak remote (or configured native repo) yet, so `flatpak update`
+/// / a package-manager upgrade wouldn't find anything. For Flatpak we therefore
+/// curl the `.flatpak` bundle straight from the latest GitHub release — the same
+/// mechanism as the in-app "Update" button ([`flatpak_self_update`]) — which is
+/// how the app actually ships for now.
+pub fn gui_update_command() -> String {
+  const PKG: &str = "gp-client";
+  // Flatpak (and any non-native install): fetch the bundle from the latest
+  // release and (re)install it — no remote needed, no root.
+  let from_release =
+    format!("curl -fLO https://github.com/{GUI_REPO}/releases/latest/download/{FLATPAK_ID}.flatpak && flatpak install --user --reinstall -y ./{FLATPAK_ID}.flatpak");
+  if is_flatpak() {
+    return from_release;
+  }
+  // A real native package updates through the OS package manager; `run_mode`
+  // separates that from a dev/source build (which this can't update).
+  if run_mode() == "Native package" {
+    return match detect() {
+      InstallKind::Dnf => format!("sudo dnf upgrade {PKG}"),
+      InstallKind::RpmOstree => "sudo rpm-ostree upgrade".to_string(),
+      InstallKind::Apt => format!("sudo apt update && sudo apt install --only-upgrade {PKG}"),
+      InstallKind::Pacman => format!("sudo pacman -Syu {PKG}"),
+      InstallKind::Zypper => format!("sudo zypper update {PKG}"),
+      InstallKind::Apk => format!("sudo apk upgrade {PKG}"),
+      InstallKind::Flatpak | InstallKind::Unknown => from_release,
+    };
+  }
+  from_release
 }
 
 /// Detect the packaging environment, preferring the most specific match.
@@ -210,6 +254,29 @@ pub fn backend_version() -> Option<String> {
   binary_version(&bin)
 }
 
+/// The installed backend's wire-protocol range `(min, max)` via `gpservice
+/// --protocol`, or `None` when the backend predates the flag (too old to
+/// advertise a range — the GUI then treats it as protocol-compatible and relies
+/// on the version-based `MIN_BACKEND` gate instead). Host-aware like
+/// [`backend_version`]: in the Flatpak the host binary isn't in the sandbox.
+pub fn backend_protocol() -> Option<(u32, u32)> {
+  let out = if is_flatpak() {
+    Command::new("flatpak-spawn").args(["--host", "gpservice", "--protocol"]).output().ok()?
+  } else {
+    let bin = crate::config::gpservice_binary();
+    if !Path::new(&bin).exists() {
+      return None;
+    }
+    Command::new(&bin).arg("--protocol").output().ok()?
+  };
+  if !out.status.success() {
+    return None;
+  }
+  let text = String::from_utf8_lossy(&out.stdout);
+  let mut nums = text.split_whitespace().filter_map(|t| t.parse::<u32>().ok());
+  Some((nums.next()?, nums.next()?))
+}
+
 /// The package manager that owns the **backend** (on the host) — even from inside
 /// the Flatpak sandbox. `detect()` returns `Flatpak` for the GUI itself, but the
 /// backend lives on the host, so probe the host directly via `flatpak-spawn`.
@@ -275,18 +342,6 @@ pub fn version_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     }
   }
   std::cmp::Ordering::Equal
-}
-
-/// True when two versions agree on `major.minor` (the `z.y` in `vz.y.x`).
-/// Patch (`x`) differences are treated as compatible, so the GUI only warns
-/// about a GUI↔backend divergence on a feature (minor) or breaking (major)
-/// release — not on every patch bump.
-pub fn same_feature_version(a: &str, b: &str) -> bool {
-  let key = |s: &str| {
-    let p = version_parts(s);
-    (p.first().copied().unwrap_or(0), p.get(1).copied().unwrap_or(0))
-  };
-  key(a) == key(b)
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

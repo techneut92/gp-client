@@ -1,0 +1,36 @@
+# Maintainer: Dylan Westra <dylanwestra@gmail.com>
+#
+# Built in CI from the repo checkout (makepkg is run from the repo root, so the
+# sources are already in place — no source array). See .github/workflows/release.yaml.
+pkgname=gp-client
+pkgver=1.5.0
+pkgrel=1
+pkgdesc="GlobalProtect-compatible VPN client GUI (Svelte + Tauri)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/techneut92/gp-client"
+license=('GPL-3.0-or-later')
+depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator' 'opensc' 'pcsclite')
+makedepends=('rust' 'nodejs' 'pnpm')
+# !lto: Arch enables LTO globally in makepkg.conf, but the `ring` crate's
+# precompiled assembly objects don't survive it — their ring_core_* symbols get
+# dropped and the final link fails with "undefined symbol". Disable LTO here.
+options=('!debug' '!lto')
+
+build() {
+  cd "$startdir"
+  pnpm -C ui install --frozen-lockfile
+  pnpm -C ui build
+  # --features custom-protocol: embed the frontend (production mode); otherwise
+  # the binary tries to load the UI from the Vite dev server at localhost:5173.
+  cargo build --release --features custom-protocol --manifest-path src-tauri/Cargo.toml
+}
+
+package() {
+  cd "$startdir"
+  install -Dm755 src-tauri/target/release/gp-client "$pkgdir/usr/bin/gp-client"
+  install -Dm644 packaging/flatpak/io.github.techneut92.GPClient.desktop \
+    "$pkgdir/usr/share/applications/io.github.techneut92.GPClient.desktop"
+  install -Dm644 src-tauri/icons/128x128.png \
+    "$pkgdir/usr/share/icons/hicolor/128x128/apps/io.github.techneut92.GPClient.png"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

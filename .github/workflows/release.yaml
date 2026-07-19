@@ -16,6 +16,9 @@ name: Release
 on:
   push:
     tags: ['v*']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   workflow_dispatch:
 
 permissions:
@@ -64,6 +67,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -72,12 +76,15 @@ jobs:
           workspaces: src-tauri
 
       - name: Install frontend dependencies
+        working-directory: ui
         run: pnpm install --frozen-lockfile
 
       - name: Build bundles (.deb, .rpm, AppImage)
-        # `tauri build` runs `pnpm build` (beforeBuildCommand) and compiles in
-        # production mode (custom-protocol), so the embedded frontend is used.
-        run: pnpm tauri build --bundles deb,rpm,appimage
+        # `tauri build` must run from the repo root — it locates src-tauri/ as a
+        # subfolder (it does not search parents). It runs `pnpm -C ui build`
+        # (beforeBuildCommand) for the frontend, then compiles in production mode
+        # (custom-protocol) so the embedded frontend is used.
+        run: ui/node_modules/.bin/tauri build --bundles deb,rpm,appimage
 
       - name: Collect artifacts
         run: |
@@ -125,10 +132,12 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
 
-      - name: Build the frontend (dist/)
-        # The flatpak manifest embeds the prebuilt dist/ (tauri-build reads it at
-        # compile time); build it before flatpak-builder runs.
+      - name: Build the frontend (ui/dist/)
+        working-directory: ui
+        # The flatpak manifest embeds the prebuilt ui/dist/ (tauri-build reads it
+        # at compile time); build it before flatpak-builder runs.
         run: |
           pnpm install --frozen-lockfile
           pnpm build
@@ -140,7 +149,7 @@ jobs:
             org.freedesktop.Sdk.Extension.rust-stable//25.08
           flatpak-builder --user --force-clean --install-deps-from=flathub \
             --repo=flatpak-repo build-dir \
-            src-tauri/packaging/flatpak/io.github.techneut92.GPClient.yml
+            packaging/flatpak/io.github.techneut92.GPClient.yml
           flatpak build-bundle flatpak-repo \
             "io.github.techneut92.GPClient-${{ matrix.arch }}.flatpak" \
             io.github.techneut92.GPClient master
@@ -195,7 +204,7 @@ jobs:
 
       - name: Build package
         run: |
-          cp src-tauri/packaging/arch/PKGBUILD .
+          cp packaging/arch/PKGBUILD .
           su builder -c "makepkg -f --noconfirm"
 
       - uses: actions/upload-artifact@v7
@@ -251,7 +260,7 @@ jobs:
             # Trust the freshly generated key so abuild can sign + index the repo.
             cp /home/builder/.abuild/*.rsa.pub /etc/apk/keys/
             su builder -c "
-              cd /src/src-tauri/packaging/alpine
+              cd /src/packaging/alpine
               REPODEST=/src/apk-out abuild -r
             "
           '

@@ -151,7 +151,7 @@ impl GpTray {
           StandardItem {
             label: name,
             activate: Box::new(move |this: &mut Self| {
-              let _ = crate::start_connect(&this.vault, &this.cfg, &this.cmd_tx, &id, "");
+              let _ = crate::start_connect(&this.vault, &this.cmd_tx, &id, "");
             }),
             ..Default::default()
           }

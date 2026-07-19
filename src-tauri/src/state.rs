@@ -72,4 +72,24 @@ pub struct Shared {
   pub current_gen: u64,
   /// Live connection details (valid while `status` is Connected).
   pub conn: ConnDetails,
+  /// True when the current session's last teardown was user-initiated, so an
+  /// unexpected session end can be told apart and explained.
+  pub user_disconnect: bool,
+  /// PKCS#11 module of the current smart-card connection (`None` otherwise).
+  /// Lets an unexpected session end check whether the card is still present.
+  pub smartcard_module: Option<String>,
+  /// True while the connect pipeline is waiting for a smart-card PIN — drives
+  /// the inline PIN prompt in the connecting view (replaces the old popup).
+  pub pin_required: bool,
+  /// The smart-card manufacturer the PIN prompt is for (e.g. "Yubico"); drives the
+  /// prompt subtitle and the card block's label. Empty → a generic prompt.
+  pub pin_prompt: String,
+  /// The PKCS#11 module file name (e.g. "opensc-pkcs11.so") behind the prompt;
+  /// shown as the card block's sub-line. Empty → "PKCS#11 token".
+  pub pin_module: String,
+  /// True while the backend is waiting for an MFA/token code (gpservice's
+  /// `VpnState::MfaChallenge`) — drives the inline MFA card.
+  pub mfa_required: bool,
+  /// The gateway/IdP prompt for the current MFA challenge.
+  pub mfa_prompt: String,
 }

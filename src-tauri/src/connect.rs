@@ -2,9 +2,9 @@
 //!
 //! gp-client links **no GPL code**: the portal/gateway HTTP lives in `gpservice`
 //! behind gp-protocol handoff messages, and the SAML webview is re-authored here.
-//! `probe` + `authenticate` drive the backend over the transport. NOTE: only the
-//! D-Bus transport routes `probe` today; the loopback (WS) transport does not, so
-//! native (non-Flatpak) installs can't authenticate yet — see transport.rs.
+//! `probe` + `authenticate` drive the backend over the transport (the D-Bus
+//! system service — the sole transport for native and Flatpak installs alike,
+//! see transport.rs).
 
 use anyhow::{bail, Result};
 use gp_protocol::request::ConnectRequest;
@@ -33,6 +33,10 @@ pub struct AuthParams {
   pub password: Option<String>,
   /// Run SAML in the system browser instead of the embedded webview.
   pub use_browser: bool,
+  /// Whether `server` is a gateway (direct-gateway flow) or a portal.
+  pub as_gateway: bool,
+  /// Scoped-DNS opt-in (per identity): domains to scope the tunnel's DNS to.
+  pub dns_domains: Vec<String>,
   /// Advanced connection options (from the settings window).
   pub opts: ConnOpts,
 }
@@ -78,8 +82,9 @@ pub async fn probe(
   sslkey: Option<String>,
   key_password: Option<String>,
   ignore_tls_errors: bool,
+  as_gateway: bool,
 ) -> ProbeResult {
-  match probe_impl(server, os, user_agent, certificate, sslkey, key_password, ignore_tls_errors).await {
+  match probe_impl(server, os, user_agent, certificate, sslkey, key_password, ignore_tls_errors, as_gateway).await {
     Ok(reply) => match reply {
       ProbeReply::Saml { supports_browser, .. } => ProbeResult {
         kind: "saml".into(),
@@ -139,9 +144,11 @@ async fn probe_impl(
   sslkey: Option<String>,
   key_password: Option<String>,
   ignore_tls_errors: bool,
+  as_gateway: bool,
 ) -> Result<ProbeReply> {
   let req = ProbeRequest {
     server: server.to_string(),
+    as_gateway,
     certificate,
     sslkey,
     key_password,
@@ -171,6 +178,7 @@ pub async fn authenticate(
 
   let probe = ProbeRequest {
     server: p.server.clone(),
+    as_gateway: p.as_gateway,
     certificate: cert.clone(),
     sslkey: p.sslkey.clone(),
     key_password: p.key_password.clone(),
@@ -228,10 +236,14 @@ pub async fn authenticate(
   if !o.client_version.is_empty() {
     args_src = args_src.with_client_version(&o.client_version);
   }
+  if !p.dns_domains.is_empty() {
+    args_src = args_src.with_dns_domains(p.dns_domains.clone());
+  }
 
   Ok(gp_protocol::ConnectAuthRequest {
     server: p.server.clone(),
     credential,
+    as_gateway: p.as_gateway,
     certificate: cert,
     sslkey: p.sslkey.clone(),
     key_password: p.key_password.clone(),
