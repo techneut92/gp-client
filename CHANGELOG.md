@@ -11,6 +11,19 @@ versions **independently** of the backend (which the GUI updates from the
 [GlobalProtect-openconnect-dw](https://github.com/techneut92/GlobalProtect-openconnect-dw)
 fork).
 
+## [1.5.1] - 2026-07-20
+
+### Changed
+- **New identities default to portal mode** (previously gateway mode). Editing an
+  existing identity is unaffected — it keeps its saved mode. Most GlobalProtect
+  deployments front their gateways with a portal, so this is the better default;
+  the gateway/portal toggle in the identity editor is unchanged.
+- **Portal mode is no longer experimental.** The full portal flow — portal login,
+  gateway picker, gateway login, tunnel — has now been verified end-to-end against
+  a live GlobalProtect portal with a PKCS#11 smart-card identity. Smart-card
+  portal connects need backend **1.5.1** (it fixes a PKCS#11 sign-in bug and a
+  dropped tunnel-start after the gateway pick); the in-app updater will offer it.
+
 ## [1.5.0] - 2026-07-19
 
 ### Added

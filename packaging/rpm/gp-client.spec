@@ -4,7 +4,7 @@
 %global debug_package %{nil}
 
 Name:           gp-client
-Version:        1.5.0
+Version:        1.5.1
 Release:        1%{?dist}
 Summary:        GlobalProtect-compatible VPN client GUI (Svelte + Tauri)
 
@@ -68,6 +68,11 @@ install -Dm644 LICENSE %{buildroot}%{_datadir}/licenses/%{name}/LICENSE
 %license %{_datadir}/licenses/%{name}/LICENSE
 
 %changelog
+* Mon Jul 20 2026 Dylan Westra <dylanwestra@gmail.com> - 1.5.1-1
+- New identities default to portal mode (existing identities keep their saved
+  mode). Portal mode verified end-to-end against a live portal with a PKCS#11
+  smart card; smart-card portal connects need backend 1.5.1.
+
 * Tue Jul 14 2026 Dylan Westra <dylanwestra@gmail.com> - 1.5.0-1
 - New independent GP Client GUI (Svelte + Tauri): connect, identity manager,
   settings and About; smart-card, SAML (embedded or system browser) and password
