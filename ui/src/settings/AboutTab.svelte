@@ -34,7 +34,11 @@
 
   let updateStatus = $state<string>(m.settings_update_check_prompt());
   let updateUrl = REPO_URL + '/releases';
+  // The app and the backend release from SEPARATE repos and version
+  // independently — each step must use its own latest. Feeding the GUI's
+  // latest into the backend download 404s whenever the two diverge (GPC-59).
   let updateLatest = '';
+  let updateLatestBackend = '';
   let updGui = false;
   let updBackend = false;
   let updateAllVisible = $state(false);
@@ -130,6 +134,7 @@
       if (u) {
         updateUrl = u.url || updateUrl;
         updateLatest = u.latest || '';
+        updateLatestBackend = u.backendLatest || '';
       }
       // One "Update all" button handles whichever of app/backend is behind.
       updGui = !!(u && u.available);
@@ -148,7 +153,7 @@
           const verStr = s.backendVersion ? 'v' + s.backendVersion : '?';
           parts.push(
             u.backendUpdate
-              ? m.settings_update_summary_backend_update({ version: verStr, latest: u.latest ?? '' })
+              ? m.settings_update_summary_backend_update({ version: verStr, latest: u.backendLatest ?? '' })
               : m.settings_update_summary_backend_latest({ version: verStr }),
           );
         }
@@ -197,15 +202,15 @@
     let guiUpdated = false;
     // Backend first (host package / rpm-ostree layer), then the app.
     if (updBackend) {
-      setUbLog(m.settings_backend_updating({ version: updateLatest }), '');
+      setUbLog(m.settings_backend_updating({ version: updateLatestBackend }), '');
       try {
-        const r = await runStep('be', () => installBackend({ version: updateLatest }));
+        const r = await runStep('be', () => installBackend({ version: updateLatestBackend }));
         if (r.ok) {
           phaseBe = 'done';
           done.push(
             r.needsReboot
-              ? m.settings_backend_updated_reboot({ version: updateLatest })
-              : m.settings_backend_updated({ version: updateLatest }),
+              ? m.settings_backend_updated_reboot({ version: updateLatestBackend })
+              : m.settings_backend_updated({ version: updateLatestBackend }),
           );
           needsReboot = !!r.needsReboot;
         } else {

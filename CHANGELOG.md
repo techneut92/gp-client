@@ -14,6 +14,11 @@ fork).
 ## [1.5.2] - 2026-07-20
 
 ### Fixed
+- **Updating the backend no longer fails with a curl 404 when the app and the
+  backend are on different versions.** The backend update step downloaded the
+  rpm/deb at the *app's* latest version number; since the two now release
+  independently, that URL usually doesn't exist. The backend step (and its
+  status text) now uses the backend's own latest release (GPC-59).
 - **"Update all" no longer crashes with `ReferenceError: Can't find variable: which`.**
   A helper in the About tab was silently miscompiled by the build toolchain (an
   inline-generic arrow function lost its entire parameter list), which broke the
