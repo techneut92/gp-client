@@ -11,6 +11,14 @@ versions **independently** of the backend (which the GUI updates from the
 [GlobalProtect-openconnect-dw](https://github.com/techneut92/GlobalProtect-openconnect-dw)
 fork).
 
+## [Unreleased]
+
+### Changed
+- **New identities default to portal mode** (previously gateway mode). Editing an
+  existing identity is unaffected — it keeps its saved mode. Most GlobalProtect
+  deployments front their gateways with a portal, so this is the better default;
+  the gateway/portal toggle in the identity editor is unchanged.
+
 ## [1.5.0] - 2026-07-19
 
 ### Added

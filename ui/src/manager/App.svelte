@@ -49,7 +49,9 @@
   let keyFile = $state('');
   let keyPassword = $state('');
   let dnsDomains = $state<string[]>([]);
-  let asGateway = $state(true);
+  // New identities default to portal mode (as_gateway = false); editing an
+  // existing one overwrites this from the saved value.
+  let asGateway = $state(false);
   let authValue = $state('-1');
   let moduleValue = $state('');
   let certValue = $state('');
@@ -194,7 +196,7 @@
     keyFile = '';
     keyPassword = '';
     dnsDomains = [];
-    asGateway = true;
+    asGateway = false;
     certValue = '';
     storeCert = false;
     storePin = false;
