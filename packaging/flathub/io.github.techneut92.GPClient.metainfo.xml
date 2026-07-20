@@ -125,6 +125,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.5.2" date="2026-07-20">
+      <description>
+        <p>Hotfix: "Update all" crashed before updating anything (a build-toolchain miscompilation); Flatpak bundles no longer report a stale version in software centers.</p>
+      </description>
+    </release>
     <release version="1.5.1" date="2026-07-20">
       <description>
         <p>New identities default to portal mode; portal-mode smart-card sign-in is verified end-to-end (requires backend 1.5.1).</p>

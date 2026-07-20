@@ -11,7 +11,7 @@ versions **independently** of the backend (which the GUI updates from the
 [GlobalProtect-openconnect-dw](https://github.com/techneut92/GlobalProtect-openconnect-dw)
 fork).
 
-## [Unreleased]
+## [1.5.2] - 2026-07-20
 
 ### Fixed
 - **"Update all" no longer crashes with `ReferenceError: Can't find variable: which`.**
