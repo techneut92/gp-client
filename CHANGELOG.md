@@ -18,6 +18,11 @@ fork).
   A helper in the About tab was silently miscompiled by the build toolchain (an
   inline-generic arrow function lost its entire parameter list), which broke the
   combined app + backend update in the released 1.5.1 build (GPC-58).
+- **Flatpak bundles no longer report a stale version in software centers.** The
+  flatpak manifest installed a trimmed duplicate of the appstream metainfo that
+  never received new release entries (1.5.1 bundles showed "Version: 1.5.0");
+  the manifest now installs the single flathub metainfo, and the duplicate is
+  removed.
 
 ## [1.5.1] - 2026-07-20
 
