@@ -169,7 +169,11 @@
     phaseBe = 'idle';
     phaseGui = updGui ? 'queued' : 'idle';
     // Run a step for one component, ticking its per-row elapsed counter.
-    const runStep = async <T,>(which: 'gui' | 'be', fn: () => Promise<T>): Promise<T> => {
+    // NOTE: deliberately a function declaration, not `async <T,>(...) => ...` —
+    // the inline-generic arrow form is silently miscompiled in .svelte scripts
+    // (the transpiler drops the whole parameter list, leaving a zero-arg arrow
+    // whose body throws `ReferenceError: Can't find variable: which`; GPC-58).
+    async function runStep<T>(which: 'gui' | 'be', fn: () => Promise<T>): Promise<T> {
       if (which === 'be') {
         phaseBe = 'run';
         elapsedBe = 0;
@@ -186,7 +190,7 @@
       } finally {
         clearInterval(t);
       }
-    };
+    }
     const done: string[] = [];
     let failed = false;
     let needsReboot = false;
