@@ -4,7 +4,7 @@
 %global debug_package %{nil}
 
 Name:           gp-client
-Version:        1.5.1
+Version:        1.5.2
 Release:        1%{?dist}
 Summary:        GlobalProtect-compatible VPN client GUI (Svelte + Tauri)
 
@@ -68,6 +68,11 @@ install -Dm644 LICENSE %{buildroot}%{_datadir}/licenses/%{name}/LICENSE
 %license %{_datadir}/licenses/%{name}/LICENSE
 
 %changelog
+* Mon Jul 20 2026 Dylan Westra <dylanwestra@gmail.com> - 1.5.2-1
+- Hotfix: "Update all" crashed with a ReferenceError before updating anything
+  (build-toolchain miscompilation of a helper). Flatpak bundles no longer
+  report a stale version in software centers.
+
 * Mon Jul 20 2026 Dylan Westra <dylanwestra@gmail.com> - 1.5.1-1
 - New identities default to portal mode (existing identities keep their saved
   mode). Portal mode verified end-to-end against a live portal with a PKCS#11
