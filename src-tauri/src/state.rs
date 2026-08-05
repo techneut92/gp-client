@@ -75,9 +75,6 @@ pub struct Shared {
   /// True when the current session's last teardown was user-initiated, so an
   /// unexpected session end can be told apart and explained.
   pub user_disconnect: bool,
-  /// PKCS#11 module of the current smart-card connection (`None` otherwise).
-  /// Lets an unexpected session end check whether the card is still present.
-  pub smartcard_module: Option<String>,
   /// True while the connect pipeline is waiting for a smart-card PIN — drives
   /// the inline PIN prompt in the connecting view (replaces the old popup).
   pub pin_required: bool,

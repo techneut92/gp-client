@@ -11,6 +11,25 @@ versions **independently** of the backend (which the GUI updates from the
 [GlobalProtect-openconnect-dw](https://github.com/techneut92/GlobalProtect-openconnect-dw)
 fork).
 
+## [Unreleased]
+
+### Fixed
+- **The window no longer stays pinned above everything after being revealed
+  from the tray.** Raising the window uses a brief always-on-top toggle to beat
+  Wayland focus-stealing prevention, but clearing it on the very next line raced
+  the compositor still applying the raise, and on some compositors (KDE/Plasma,
+  Mutter) the two coalesced and left the window permanently on top. The un-pin
+  is now deferred until just after the raise has settled, so the window comes
+  forward and then behaves like a normal window.
+
+### Changed
+- **A smart card removed mid-session is now reported by the backend, not
+  guessed by the GUI.** When the tunnel drops because the smart card was pulled,
+  the backend (1.6.0) classifies it and the GUI shows "Smart card not found —
+  re-insert your card and reconnect" directly, instead of scanning the reader
+  itself after the fact (GPS-2). Requires backend wire-protocol v5; a mismatched
+  older backend shows the usual "update" prompt.
+
 ## [1.5.2] - 2026-07-20
 
 ### Fixed
