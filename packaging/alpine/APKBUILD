@@ -4,7 +4,7 @@
 # (packaging/alpine), so the repo root is two levels up. See
 # .github/workflows/release.yaml.
 pkgname=gp-client
-pkgver=1.5.2
+pkgver=1.6.0
 pkgrel=0
 pkgdesc="GlobalProtect-compatible VPN client GUI (Svelte + Tauri)"
 url="https://github.com/techneut92/gp-client"

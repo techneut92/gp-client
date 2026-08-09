@@ -1,6 +1,6 @@
 [package]
 name = "gp-client"
-version = "1.5.2"
+version = "1.6.0"
 edition = "2024"
 rust-version = "1.89"
 license = "GPL-3.0-or-later"
@@ -25,7 +25,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # The owned wire protocol (crates.io) — the only GP-suite dependency.
-gp-protocol = "=1.6.0-beta.1"
+gp-protocol = "=1.6.0"
 
 anyhow = "1"
 base64 = "0.22"
@@ -68,9 +68,3 @@ libc = "0.2"
 # Flatpak TLS-trust fallback. Pinned to the version wry/Tauri already resolve so
 # the gio/webkit types line up.
 webkit2gtk = "=2.0.2"
-
-# TEMPORARY dev-only override: build against the local gp-protocol working copy
-# while 1.6.0-beta.1 is unpublished. MUST be removed before pushing — the
-# committed pin resolves =1.6.0-beta.1 from crates.io.
-[patch.crates-io]
-gp-protocol = { path = "../../gp-protocol" }

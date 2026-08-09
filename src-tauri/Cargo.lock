@@ -1577,7 +1577,7 @@ dependencies = [
 
 [[package]]
 name = "gp-client"
-version = "1.5.2"
+version = "1.6.0"
 dependencies = [
  "anyhow",
  "argon2",
@@ -1609,7 +1609,9 @@ dependencies = [
 
 [[package]]
 name = "gp-protocol"
-version = "1.6.0-beta.1"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5308eb0f9a5b0810062af57a4ad6c9f299b22703f1408390ca536e5987718734"
 dependencies = [
  "chrono",
  "humantime",

@@ -11,7 +11,7 @@ versions **independently** of the backend (which the GUI updates from the
 [GlobalProtect-openconnect-dw](https://github.com/techneut92/GlobalProtect-openconnect-dw)
 fork).
 
-## [Unreleased]
+## [1.6.0] - 2026-08-09
 
 ### Fixed
 - **Flatpak sign-in no longer fails with "Unacceptable TLS certificate".** On
