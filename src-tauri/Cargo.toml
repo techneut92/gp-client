@@ -25,7 +25,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # The owned wire protocol (crates.io) — the only GP-suite dependency.
-gp-protocol = "=1.5.1"
+gp-protocol = "=1.6.0-beta.1"
 
 anyhow = "1"
 base64 = "0.22"
@@ -64,3 +64,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 gtk = "0.18"
 # getuid() for the single-instance socket's same-user peer check.
 libc = "0.2"
+# Reach the SSO webview's WebKit view (via Tauri's with_webview) to install the
+# Flatpak TLS-trust fallback. Pinned to the version wry/Tauri already resolve so
+# the gio/webkit types line up.
+webkit2gtk = "=2.0.2"
+
+# TEMPORARY dev-only override: build against the local gp-protocol working copy
+# while 1.6.0-beta.1 is unpublished. MUST be removed before pushing — the
+# committed pin resolves =1.6.0-beta.1 from crates.io.
+[patch.crates-io]
+gp-protocol = { path = "../../gp-protocol" }

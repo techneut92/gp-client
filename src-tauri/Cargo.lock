@@ -1603,14 +1603,13 @@ dependencies = [
  "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
+ "webkit2gtk",
  "zbus 5.17.0",
 ]
 
 [[package]]
 name = "gp-protocol"
-version = "1.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84efd949456ae88c173935bd4dd98bdcfedcab68f85f22246677441b7213bb05"
+version = "1.6.0-beta.1"
 dependencies = [
  "chrono",
  "humantime",

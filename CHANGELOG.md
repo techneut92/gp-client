@@ -14,6 +14,16 @@ fork).
 ## [Unreleased]
 
 ### Fixed
+- **Flatpak sign-in no longer fails with "Unacceptable TLS certificate".** On
+  hosts running p11-kit 0.26+ (e.g. Fedora 44), the GNOME runtime's trust
+  bridge to the host can't speak the newer RPC protocol, so the sandbox's trust
+  store comes up empty and every certificate — public or corporate — is
+  rejected, blocking browser SSO entirely. The sign-in webview now falls back
+  to verifying the server certificate against the CA bundle the runtime already
+  ships (preferring the host's bundle, which also carries private/corporate CA
+  anchors, via a read-only `host-etc` mount) and only proceeds if it genuinely
+  validates — a bad certificate is still rejected. When the trust bridge works,
+  this stays completely dormant (GH #23).
 - **The window no longer stays pinned above everything after being revealed
   from the tray.** Raising the window uses a brief always-on-top toggle to beat
   Wayland focus-stealing prevention, but clearing it on the very next line raced

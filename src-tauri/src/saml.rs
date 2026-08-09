@@ -131,9 +131,14 @@ pub async fn authenticate(app: &AppHandle, saml_request: &str) -> Result<SamlRes
         }
         true
       })
-      .build()
-      .map(|_| ());
-    let _ = built_tx.send(result.map_err(Into::into));
+      .build();
+    // On the Flatpak sandbox, install the TLS-trust fallback so a broken
+    // p11-kit bridge (empty trust store) doesn't block sign-in (GH #23).
+    #[cfg(target_os = "linux")]
+    if let Ok(win) = &result {
+      crate::webview_tls::install_trust_fallback(win);
+    }
+    let _ = built_tx.send(result.map(|_| ()).map_err(Into::into));
   })?;
   built_rx.await??;
 
