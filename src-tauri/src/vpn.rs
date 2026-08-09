@@ -17,7 +17,7 @@ use crate::connect::{authenticate, AuthParams, ConnOpts};
 use crate::state::{ConnDetails, Shared, Status};
 use crate::transport::{self, Transport};
 use crate::tray::TrayHandle;
-use gp_protocol::{ConnectedInfo, VpnState};
+use gp_protocol::{ConnectedInfo, DisconnectReason, VpnState};
 
 /// Parameters captured from the UI at connect time. `pin` lives only here and
 /// in the spawned processes — it is never persisted.
@@ -84,7 +84,6 @@ impl Notifier {
   /// desktop notification on the connect / disconnect / error transitions.
   fn set_status(&self, generation: u64, status: Status) {
     let mut notify: Option<(String, String)> = None;
-    let mut smartcard_check: Option<String> = None;
     {
       let mut s = self.shared.lock().unwrap();
       if s.current_gen != generation {
@@ -94,9 +93,10 @@ impl Notifier {
       let was_active = s.status.is_active();
 
       // Clear the transient progress line once we reach any terminal state
-      // (connected, disconnected, or error) so a stale "Authenticating…" line
-      // never lingers — the status itself then conveys the outcome.
-      if matches!(status, Status::Connected | Status::Disconnected | Status::Error(_)) {
+      // (connected or error) so a stale "Authenticating…" line never lingers —
+      // the status itself then conveys the outcome. (The Disconnected terminal
+      // is handled by `set_disconnected`.)
+      if matches!(status, Status::Connected | Status::Error(_)) {
         s.log.clear();
       }
 
@@ -107,13 +107,6 @@ impl Notifier {
           s.conn.portal.clone()
         };
         notify = Some(("GP Client connected".into(), format!("Connected to {portal}")));
-      } else if was_active && matches!(status, Status::Disconnected) {
-        // An unexpected end of a smart-card session is most often the card
-        // being removed — the hourly HIP recheck then can't present the client
-        // cert and the portal logs the session out. Defer the (blocking) card
-        // scan until after the lock is released.
-        smartcard_check = (!s.user_disconnect).then(|| s.smartcard_module.clone()).flatten();
-        notify = Some(("GP Client disconnected".into(), "The VPN connection has ended".into()));
       } else if let Status::Error(e) = &status {
         if was_active {
           notify = Some(("GP Client error".into(), e.clone()));
@@ -129,16 +122,47 @@ impl Notifier {
       s.gw_list = Vec::new();
       s.gw_preferred.clear();
     }
-    // Off-lock: if a smart-card session ended unexpectedly, check whether the
-    // card is still readable. If not, say so — both in the notification and the
-    // status line — instead of a bare "connection ended".
-    if let Some(module) = smartcard_check {
-      let card_gone = crate::pkcs11::enumerate(&module).map(|c| c.is_empty()).unwrap_or(true);
-      if card_gone {
-        let msg = "Smart card not found — the VPN session ended. Re-insert your card and reconnect.";
-        notify = Some(("GP Client disconnected".into(), msg.into()));
-        self.shared.lock().unwrap().log = msg.into();
+    if let Some((summary, body)) = notify {
+      notify_desktop(summary, body);
+    }
+    self.refresh();
+  }
+
+  /// Transition to `Disconnected`, carrying the backend's reason for *why* the
+  /// session ended. Every disconnect — clean, user-initiated, or an abnormal
+  /// drop — routes through here so the notification is decided in one place.
+  ///
+  /// `SmartCardUnavailable` means the backend detected the token was pulled
+  /// mid-session (GPS-2); the GUI no longer scans the reader itself — it trusts
+  /// the backend's classification and tells the user to re-insert the card.
+  fn set_disconnected(&self, generation: u64, reason: DisconnectReason) {
+    let notify;
+    {
+      let mut s = self.shared.lock().unwrap();
+      if s.current_gen != generation {
+        return;
       }
+      let was_active = s.status.is_active();
+      let user_disconnect = s.user_disconnect;
+      s.log.clear();
+
+      notify = if !was_active {
+        None
+      } else if matches!(reason, DisconnectReason::SmartCardUnavailable) && !user_disconnect {
+        let msg = "Smart card not found — the VPN session ended. Re-insert your card and reconnect.";
+        s.log = msg.into();
+        Some(("GP Client disconnected".into(), msg.into()))
+      } else {
+        Some(("GP Client disconnected".into(), "The VPN connection has ended".into()))
+      };
+
+      s.status = Status::Disconnected;
+      s.conn = Default::default();
+      s.mfa_required = false;
+      s.mfa_prompt.clear();
+      s.gw_required = false;
+      s.gw_list = Vec::new();
+      s.gw_preferred.clear();
     }
     if let Some((summary, body)) = notify {
       notify_desktop(summary, body);
@@ -210,16 +234,14 @@ impl Notifier {
     self.refresh();
   }
 
-  /// Start of a new connection: clear the user-disconnect flag and record the
-  /// smart-card module (if this connection uses one) so an unexpected end can
-  /// be diagnosed.
-  fn begin_connection(&self, generation: u64, smartcard_module: Option<String>) {
+  /// Start of a new connection: clear the user-disconnect flag so the next
+  /// disconnect is classified correctly.
+  fn begin_connection(&self, generation: u64) {
     let mut s = self.shared.lock().unwrap();
     if s.current_gen != generation {
       return;
     }
     s.user_disconnect = false;
-    s.smartcard_module = smartcard_module;
   }
 
   /// Mark the imminent teardown as user-initiated (so it isn't diagnosed as an
@@ -286,9 +308,7 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHa
     match cmd {
       UiCommand::Connect(params) => {
         let generation = notifier.bump();
-        let smartcard_module =
-          (params.cert_kind == 1 && !params.module_path.is_empty()).then(|| params.module_path.clone());
-        notifier.begin_connection(generation, smartcard_module);
+        notifier.begin_connection(generation);
         notifier.set_status(generation, Status::Connecting);
 
         // Tear down any previous connection first.
@@ -310,7 +330,7 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHa
         if let Some(h) = handle.take() {
           rt.block_on(async { let _ = h.send_disconnect().await; });
         }
-        notifier.set_status(generation, Status::Disconnected);
+        notifier.set_disconnected(generation, DisconnectReason::User);
       }
     }
   }
@@ -476,18 +496,14 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
         // Keep the connection details — the session survives the reconnect.
         VpnState::Reconnecting(_) => n.set_status(generation, Status::Reconnecting),
         VpnState::Disconnecting => n.set_status(generation, Status::Disconnecting),
-        VpnState::Disconnected => {
-          n.set_conn(generation, Default::default());
-          n.set_status(generation, Status::Disconnected);
-        }
+        VpnState::Disconnected(reason) => n.set_disconnected(generation, reason),
       }
     }
 
     // The event stream ended — gpservice closed the connection or died. If this
     // is still the current connection (a user disconnect bumps the generation),
     // treat it as a dropped connection.
-    n.set_conn(generation, Default::default());
-    n.set_status(generation, Status::Disconnected);
+    n.set_disconnected(generation, DisconnectReason::User);
   });
 
   Ok(transport)

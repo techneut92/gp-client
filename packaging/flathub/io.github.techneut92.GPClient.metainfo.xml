@@ -125,6 +125,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.6.0" date="2026-08-09">
+      <description>
+        <p>Flatpak sign-in no longer fails with "Unacceptable TLS certificate" on hosts with a newer p11-kit (e.g. Fedora 44); a smart card removed mid-session is now reported by the backend ("Smart card not found"); and the window no longer stays pinned above everything after being opened from the tray. Requires backend 1.6.0.</p>
+      </description>
+    </release>
     <release version="1.5.2" date="2026-07-20">
       <description>
         <p>Hotfix: "Update all" crashed before updating anything (a build-toolchain miscompilation); Flatpak bundles no longer report a stale version in software centers.</p>

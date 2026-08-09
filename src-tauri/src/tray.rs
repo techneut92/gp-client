@@ -26,14 +26,25 @@ use crate::vpn::UiCommand;
 
 pub type TrayHandle = ksni::blocking::Handle<GpTray>;
 
+/// How long the always-on-top raise stays pinned before it is cleared. Long
+/// enough for the compositor to process the raise+activate (so the un-pin
+/// doesn't coalesce with it and leave the window stuck above everything), short
+/// enough that the user never perceives the window as "always on top".
+const RAISE_UNPIN_DELAY: Duration = Duration::from_millis(400);
+
 /// Bring the main window forward and actually give it focus.
 ///
 /// `set_focus()` alone is unreliable on Wayland compositors (COSMIC, and Mutter
 /// under certain settings): focus-stealing prevention drops an activation that
 /// arrives without a valid token, so the window shows but stays behind and
 /// unfocused. Briefly toggling `always_on_top` forces the compositor to raise
-/// and activate it, which carries the focus with it. The flag is set back off
-/// immediately so the window doesn't stay pinned above everything else.
+/// and activate it, which carries the focus with it.
+///
+/// The un-pin is **deferred**, not synchronous: setting `always_on_top` back to
+/// `false` on the very next line races the compositor still applying the raise,
+/// and on some compositors (KDE/Plasma, Mutter) the two coalesce so the window
+/// stays pinned above everything else. Clearing it a short moment later, after
+/// the raise has settled, reliably un-pins it.
 ///
 /// Both callers run off the main thread (the ksni tray service thread and the
 /// single-instance listener thread), but on Linux these window methods are GTK
@@ -49,7 +60,19 @@ pub fn reveal_window(app: &AppHandle) {
       let _ = w.unminimize();
       let _ = w.set_always_on_top(true);
       let _ = w.set_focus();
-      let _ = w.set_always_on_top(false);
+
+      // Clear the raise hint once the compositor has settled, back on the main
+      // (GTK) thread. A detached timer thread only sleeps, then marshals the
+      // actual window call — it never touches GTK off-thread.
+      let app = app.clone();
+      std::thread::spawn(move || {
+        std::thread::sleep(RAISE_UNPIN_DELAY);
+        let _ = app.clone().run_on_main_thread(move || {
+          if let Some(w) = app.get_webview_window("main") {
+            let _ = w.set_always_on_top(false);
+          }
+        });
+      });
     }
   });
 }

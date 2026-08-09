@@ -3,7 +3,7 @@
 # Built in CI from the repo checkout (makepkg is run from the repo root, so the
 # sources are already in place — no source array). See .github/workflows/release.yaml.
 pkgname=gp-client
-pkgver=1.5.2
+pkgver=1.6.0
 pkgrel=1
 pkgdesc="GlobalProtect-compatible VPN client GUI (Svelte + Tauri)"
 arch=('x86_64' 'aarch64')

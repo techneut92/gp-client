@@ -11,6 +11,35 @@ versions **independently** of the backend (which the GUI updates from the
 [GlobalProtect-openconnect-dw](https://github.com/techneut92/GlobalProtect-openconnect-dw)
 fork).
 
+## [1.6.0] - 2026-08-09
+
+### Fixed
+- **Flatpak sign-in no longer fails with "Unacceptable TLS certificate".** On
+  hosts running p11-kit 0.26+ (e.g. Fedora 44), the GNOME runtime's trust
+  bridge to the host can't speak the newer RPC protocol, so the sandbox's trust
+  store comes up empty and every certificate — public or corporate — is
+  rejected, blocking browser SSO entirely. The sign-in webview now falls back
+  to verifying the server certificate against the CA bundle the runtime already
+  ships (preferring the host's bundle, which also carries private/corporate CA
+  anchors, via a read-only `host-etc` mount) and only proceeds if it genuinely
+  validates — a bad certificate is still rejected. When the trust bridge works,
+  this stays completely dormant (GH #23).
+- **The window no longer stays pinned above everything after being revealed
+  from the tray.** Raising the window uses a brief always-on-top toggle to beat
+  Wayland focus-stealing prevention, but clearing it on the very next line raced
+  the compositor still applying the raise, and on some compositors (KDE/Plasma,
+  Mutter) the two coalesced and left the window permanently on top. The un-pin
+  is now deferred until just after the raise has settled, so the window comes
+  forward and then behaves like a normal window.
+
+### Changed
+- **A smart card removed mid-session is now reported by the backend, not
+  guessed by the GUI.** When the tunnel drops because the smart card was pulled,
+  the backend (1.6.0) classifies it and the GUI shows "Smart card not found —
+  re-insert your card and reconnect" directly, instead of scanning the reader
+  itself after the fact (GPS-2). Requires backend wire-protocol v5; a mismatched
+  older backend shows the usual "update" prompt.
+
 ## [1.5.2] - 2026-07-20
 
 ### Fixed

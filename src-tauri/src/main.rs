@@ -37,6 +37,8 @@ mod transport;
 mod tray;
 mod vault;
 mod vpn;
+#[cfg(target_os = "linux")]
+mod webview_tls;
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};

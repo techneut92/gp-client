@@ -48,6 +48,12 @@ finish-args:
   - --filesystem=xdg-config/pop-shell:create
   # One-time, read-only: import settings from the predecessor gpgui on first run.
   - --filesystem=~/.var/app/io.github.techneut92.gpgui:ro
+  # Read-only host /etc, for the host CA trust bundle at
+  # /run/host/etc/pki/ca-trust/extracted/pem/. The SSO webview falls back to it
+  # for TLS validation when the runtime's p11-kit trust bridge is broken (an
+  # empty sandbox trust store blocks sign-in — GH #23), and it carries any
+  # private/corporate CA anchors that a public bundle lacks.
+  - --filesystem=host-etc:ro
 
 modules:
   # libpcsclite client (to reach host pcscd via --socket=pcsc). The client/socket

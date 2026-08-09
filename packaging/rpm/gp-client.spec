@@ -4,7 +4,7 @@
 %global debug_package %{nil}
 
 Name:           gp-client
-Version:        1.5.2
+Version:        1.6.0
 Release:        1%{?dist}
 Summary:        GlobalProtect-compatible VPN client GUI (Svelte + Tauri)
 
@@ -68,6 +68,16 @@ install -Dm644 LICENSE %{buildroot}%{_datadir}/licenses/%{name}/LICENSE
 %license %{_datadir}/licenses/%{name}/LICENSE
 
 %changelog
+* Sat Aug 09 2026 Dylan Westra <dylanwestra@gmail.com> - 1.6.0-1
+- Flatpak sign-in no longer fails with "Unacceptable TLS certificate" when the
+  host runs a newer p11-kit (e.g. Fedora 44): the SSO webview falls back to the
+  runtime/host CA bundle when the sandbox trust bridge is broken (GH #23).
+- A smart card removed mid-session is now reported by the backend
+  ("Smart card not found - re-insert your card and reconnect") instead of
+  guessed by the GUI (GPS-2; requires backend 1.6.0, wire-protocol v5).
+- The window no longer stays pinned above everything after being revealed from
+  the tray.
+
 * Mon Jul 20 2026 Dylan Westra <dylanwestra@gmail.com> - 1.5.2-1
 - Hotfix: "Update all" crashed with a ReferenceError before updating anything
   (build-toolchain miscompilation of a helper). Flatpak bundles no longer
