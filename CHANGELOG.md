@@ -11,7 +11,7 @@ versions **independently** of the backend (which the GUI updates from the
 [GlobalProtect-openconnect-dw](https://github.com/techneut92/GlobalProtect-openconnect-dw)
 fork).
 
-## [Unreleased]
+## [1.6.1] - 2026-10-01
 
 ### Fixed
 - **The window no longer glitches on WebKitGTK 2.54.** The Flatpak's GNOME 50
