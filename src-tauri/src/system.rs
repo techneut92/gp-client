@@ -64,6 +64,38 @@ pub fn is_flatpak() -> bool {
   Path::new("/.flatpak-info").exists()
 }
 
+/// Set WebKit rendering variables for the WebKitGTK version actually loaded.
+///
+/// Before 2.54 the DMA-BUF renderer crashed on some Wayland + Mesa setups (Gdk
+/// "Error 71"), so it was switched off with `WEBKIT_DISABLE_DMABUF_RENDERER`.
+/// From 2.54 (Skia compositing, in the GNOME 50 runtime and current distros)
+/// switching it off is what breaks the window: glitches, half-painted or blank
+/// surfaces. So it is only set below 2.54. A value already in the environment
+/// always wins, so a user can still force it either way.
+///
+/// Must run at the start of `main`, before any thread exists: it calls
+/// `std::env::set_var`.
+#[cfg(target_os = "linux")]
+pub fn apply_webkit_env() {
+  const VAR: &str = "WEBKIT_DISABLE_DMABUF_RENDERER";
+  // SAFETY: plain getters for the version of the linked libwebkit2gtk.
+  let (major, minor) = unsafe {
+    (
+      webkit2gtk::ffi::webkit_get_major_version(),
+      webkit2gtk::ffi::webkit_get_minor_version(),
+    )
+  };
+  if std::env::var_os(VAR).is_some() {
+    tracing::info!("WebKitGTK {major}.{minor}: {VAR} kept as set in the environment");
+  } else if (major, minor) < (2, 54) {
+    // SAFETY: called first thing in `main`, before any other thread is spawned.
+    unsafe { std::env::set_var(VAR, "1") };
+    tracing::info!("WebKitGTK {major}.{minor}: DMA-BUF renderer disabled ({VAR}=1)");
+  } else {
+    tracing::info!("WebKitGTK {major}.{minor}: DMA-BUF renderer left on");
+  }
+}
+
 /// How *this* binary is running, independent of the OS package manager — so a
 /// source/dev build isn't mislabelled as "rpm-ostree" just because the OS is
 /// image-based. Used for the About display; install/update *commands* still use

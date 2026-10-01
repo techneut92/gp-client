@@ -4,7 +4,7 @@
 %global debug_package %{nil}
 
 Name:           gp-client
-Version:        1.6.0
+Version:        1.6.1
 Release:        1%{?dist}
 Summary:        GlobalProtect-compatible VPN client GUI (Svelte + Tauri)
 
@@ -68,6 +68,10 @@ install -Dm644 LICENSE %{buildroot}%{_datadir}/licenses/%{name}/LICENSE
 %license %{_datadir}/licenses/%{name}/LICENSE
 
 %changelog
+* Thu Oct 01 2026 Dylan Westra <dylanwestra@gmail.com> - 1.6.1-1
+- The window no longer glitches on WebKitGTK 2.54: the DMA-BUF renderer is only
+  switched off below 2.54, decided at startup from the loaded WebKitGTK version.
+
 * Sat Aug 09 2026 Dylan Westra <dylanwestra@gmail.com> - 1.6.0-1
 - Flatpak sign-in no longer fails with "Unacceptable TLS certificate" when the
   host runs a newer p11-kit (e.g. Fedora 44): the SSO webview falls back to the

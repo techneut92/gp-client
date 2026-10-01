@@ -11,6 +11,19 @@ versions **independently** of the backend (which the GUI updates from the
 [GlobalProtect-openconnect-dw](https://github.com/techneut92/GlobalProtect-openconnect-dw)
 fork).
 
+## [1.6.1] - 2026-10-01
+
+### Fixed
+- **The window no longer glitches on WebKitGTK 2.54.** The Flatpak's GNOME 50
+  runtime and current distributions moved to WebKitGTK 2.54, which composites
+  with Skia. GP Client switched WebKit's DMA-BUF renderer off everywhere, a
+  workaround for a Wayland crash on older WebKitGTK, and on 2.54 that is
+  exactly what makes the window glitch or paint incompletely. The app now
+  decides at startup from the WebKitGTK version it loads: the renderer is only
+  switched off below 2.54, and a `WEBKIT_DISABLE_DMABUF_RENDERER` already set in
+  the environment still wins. The Flatpak no longer sets the variable, and the
+  autostart entry no longer forces it.
+
 ## [1.6.0] - 2026-08-09
 
 ### Fixed
