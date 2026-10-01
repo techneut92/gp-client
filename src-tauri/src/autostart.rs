@@ -33,8 +33,9 @@ fn exec_line(minimized: bool) -> String {
       .and_then(|p| p.to_str().map(str::to_string))
       .unwrap_or_else(|| "gp-client".to_string())
   };
-  // WEBKIT_DISABLE_DMABUF_RENDERER mirrors the .desktop launcher.
-  format!("env WEBKIT_DISABLE_DMABUF_RENDERER=1 {bin}{hidden}")
+  // No WebKit variables here: `system::apply_webkit_env` decides them at startup
+  // from the WebKitGTK version actually loaded.
+  format!("{bin}{hidden}")
 }
 
 /// Create or remove the autostart entry to match `enabled`. When enabled, the

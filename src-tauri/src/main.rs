@@ -937,6 +937,11 @@ fn main() {
     if system::is_flatpak() { "flatpak" } else { "native" }
   );
 
+  // Right after logging, before any GTK/Tauri init or other thread: this sets
+  // environment variables that WebKit reads when it starts.
+  #[cfg(target_os = "linux")]
+  system::apply_webkit_env();
+
   // Single-instance guard — the very first thing, before any GTK/Tauri init. If
   // another instance is already running this signals it to reveal its window and
   // exits; otherwise we hold the listener and service "show" pings in `setup`.

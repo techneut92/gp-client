@@ -22,8 +22,6 @@ finish-args:
   - --socket=wayland
   - --socket=fallback-x11
   - --device=dri
-  # webkit2gtk's DMABUF renderer crashes on some Wayland + Mesa setups.
-  - --env=WEBKIT_DISABLE_DMABUF_RENDERER=1
   # Update check against the GitHub Releases API.
   - --share=network
   # Smart card: talk to the host pcscd (YubiKey PIV).
